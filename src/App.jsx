@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Settings, Play, Square, AlertTriangle, Wifi, Info, MessageCircle } from 'lucide-react';
+import { Mic, Settings, Play, Square, AlertTriangle, Wifi, Info, MessageCircle, Clock } from 'lucide-react';
 
 export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [whistleCount, setWhistleCount] = useState(0);
   const [targetWhistles, setTargetWhistles] = useState(3);
   const [sensitivity, setSensitivity] = useState(50); // 0-100
+  const [minDuration, setMinDuration] = useState(2.0); // Seconds
   const [volumeLevel, setVolumeLevel] = useState(0);
   // We keep lastWhistleTime in state for potential UI updates, but use ref for logic
   const [status, setStatus] = useState('Ready'); // Ready, Listening, Cooldown, Triggered
@@ -28,14 +29,13 @@ export default function App() {
   const loudFramesRef = useRef(0);
   const statusRef = useRef('Ready');
   const sensitivityRef = useRef(50);
+  const minDurationRef = useRef(2.0);
   const lastWhistleTimeRef = useRef(0);
   const targetWhistlesRef = useRef(3);
   const whistleCountRef = useRef(0);
 
   // Constants
   const COOLDOWN_MS = 5000; 
-  // CHANGED: Lowered to 10 frames (~0.15s) for faster detection
-  const REQUIRED_LOUD_FRAMES = 10; 
   
   // Sync Refs with State
   useEffect(() => {
@@ -45,6 +45,10 @@ export default function App() {
   useEffect(() => {
     sensitivityRef.current = sensitivity;
   }, [sensitivity]);
+
+  useEffect(() => {
+    minDurationRef.current = minDuration;
+  }, [minDuration]);
 
   useEffect(() => {
     targetWhistlesRef.current = targetWhistles;
@@ -59,6 +63,7 @@ export default function App() {
     const savedAlexa = localStorage.getItem('alexaUrl');
     const savedWhatsapp = localStorage.getItem('whatsappUrl');
     const savedTarget = localStorage.getItem('targetWhistles');
+    const savedDuration = localStorage.getItem('minDuration');
     
     if (savedAlexa) setAlexaUrl(savedAlexa);
     if (savedWhatsapp) setWhatsappUrl(savedWhatsapp);
@@ -66,6 +71,11 @@ export default function App() {
         const target = parseInt(savedTarget);
         setTargetWhistles(target);
         targetWhistlesRef.current = target;
+    }
+    if (savedDuration) {
+        const duration = parseFloat(savedDuration);
+        setMinDuration(duration);
+        minDurationRef.current = duration;
     }
 
     return () => {
@@ -78,7 +88,8 @@ export default function App() {
     localStorage.setItem('alexaUrl', alexaUrl);
     localStorage.setItem('whatsappUrl', whatsappUrl);
     localStorage.setItem('targetWhistles', targetWhistles);
-  }, [alexaUrl, whatsappUrl, targetWhistles]);
+    localStorage.setItem('minDuration', minDuration);
+  }, [alexaUrl, whatsappUrl, targetWhistles, minDuration]);
 
   // Trigger Logic (Moved out of loop to ensure React state updates correctly)
   useEffect(() => {
@@ -162,8 +173,6 @@ export default function App() {
     const now = Date.now();
     
     // Logic: Sustain Check with "Leaky Bucket"
-    // Instead of resetting to 0 immediately on a quiet frame, we decrement.
-    // This allows for tiny stutters in the sound without losing progress.
     if (normalizedVolume > threshold) {
       loudFramesRef.current += 1;
     } else {
@@ -173,11 +182,13 @@ export default function App() {
     // Check Trigger
     const currentStatus = statusRef.current;
     const timeSinceLast = now - lastWhistleTimeRef.current;
+    
+    // Calculate required frames based on duration setting (approx 60fps)
+    // e.g., 2.0s * 60 = 120 frames
+    const requiredFrames = minDurationRef.current * 60;
 
     if (currentStatus === 'Listening' && timeSinceLast > COOLDOWN_MS) {
-       if (loudFramesRef.current > REQUIRED_LOUD_FRAMES) {
-          // We must call the handler but NOT recursively update state in loop too fast
-          // The handler handles the state updates
+       if (loudFramesRef.current > requiredFrames) {
           handleWhistleDetected();
        }
     }
@@ -384,9 +395,25 @@ export default function App() {
                     onChange={(e) => setSensitivity(Number(e.target.value))}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
+            </div>
+
+            {/* Duration Input */}
+            <div className="mb-6">
+                <label className="block text-sm text-slate-400 mb-2 flex justify-between">
+                    <span className="flex items-center gap-2"><Clock size={14} /> Min Whistle Duration</span>
+                    <span>{minDuration}s</span>
+                </label>
+                <input 
+                    type="range" 
+                    min="0.5" 
+                    max="5.0" 
+                    step="0.5"
+                    value={minDuration} 
+                    onChange={(e) => setMinDuration(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
                 <p className="text-xs text-slate-500 mt-2">
-                    Move Right: Triggers more easily. <br/>
-                    Move Left: Requires louder sound.
+                    Sound must be continuous for this long to count.
                 </p>
             </div>
 
