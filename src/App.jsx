@@ -23,9 +23,15 @@ export default function App() {
   const sourceRef = useRef(null);
   const animationRef = useRef(null);
   const streamRef = useRef(null);
+  
+  // NEW: Ref to track how long a sound has been loud
+  const loudFramesRef = useRef(0);
 
   // Constants
   const COOLDOWN_MS = 5000; // 5 seconds wait between whistles
+  // NEW: Sound must be loud for ~30 frames (approx 0.5 seconds) to count. 
+  // This prevents instant glitches/claps from counting.
+  const REQUIRED_LOUD_FRAMES = 30; 
   
   // Load settings on mount
   useEffect(() => {
@@ -81,6 +87,11 @@ export default function App() {
       source.connect(analyser);
       sourceRef.current = source;
 
+      // Reset logic variables
+      loudFramesRef.current = 0;
+      // Set last whistle time to NOW so we don't trigger immediately on start
+      setLastWhistleTime(Date.now()); 
+      
       setIsListening(true);
       setStatus('Listening');
       analyzeAudio();
@@ -98,6 +109,7 @@ export default function App() {
     setIsListening(false);
     setStatus('Ready');
     setVolumeLevel(0);
+    loudFramesRef.current = 0;
   };
 
   const analyzeAudio = () => {
@@ -106,35 +118,43 @@ export default function App() {
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     analyserRef.current.getByteFrequencyData(dataArray);
 
-    // CHANGED: Use Max value instead of Average
-    // Whistles are pure tones (spikes), averaging washes them out.
-    let maxVal = 0;
+    // CHANGED: Use RMS (Root Mean Square) instead of Max/Average
+    // This is the "Standard" way to calculate audio loudness/energy.
+    let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
-      if (dataArray[i] > maxVal) {
-        maxVal = dataArray[i];
-      }
+      sum += dataArray[i] * dataArray[i];
     }
+    const rms = Math.sqrt(sum / dataArray.length);
     
-    // Normalize 0-255 to 0-100
-    // We add a BOOST_FACTOR because raw audio (no auto-gain) is naturally very quiet.
-    // This multiplies the signal so you can actually see it on the bar.
-    const BOOST_FACTOR = 3; 
-    const rawPercentage = (maxVal / 255) * 100;
-    const boostedVolume = Math.min(rawPercentage * BOOST_FACTOR, 100);
+    // RMS is 0-255. Normalize to 0-100.
+    // We apply a small 1.2x boost to make it readable, but not 3x like before.
+    const normalizedVolume = Math.min((rms / 255) * 100 * 1.5, 100);
     
-    setVolumeLevel(boostedVolume);
+    setVolumeLevel(normalizedVolume);
 
     // Sensitivity Calculation
     // If sensitivity is 50, threshold is 50.
-    // If sensitivity is 90, threshold is 10 (triggers very easily).
     const threshold = 100 - sensitivity; 
 
     const now = Date.now();
     
-    if (boostedVolume > threshold) {
-      if (status === 'Listening' && (now - lastWhistleTime > COOLDOWN_MS)) {
-        handleWhistleDetected();
-      }
+    // LOGIC CHANGE: Sustain Check
+    if (normalizedVolume > threshold) {
+      loudFramesRef.current += 1;
+    } else {
+      // If sound dips below threshold, reset the sustain counter
+      // (We decrease it slowly to be forgiving of tiny gaps, or reset to 0)
+      loudFramesRef.current = 0;
+    }
+
+    // Only trigger if:
+    // 1. Status is Listening
+    // 2. Cooldown has passed
+    // 3. Sound has been loud for 'REQUIRED_LOUD_FRAMES' consecutive frames
+    if (status === 'Listening' && (now - lastWhistleTime > COOLDOWN_MS)) {
+       if (loudFramesRef.current > REQUIRED_LOUD_FRAMES) {
+          handleWhistleDetected();
+       }
     }
 
     animationRef.current = requestAnimationFrame(analyzeAudio);
@@ -143,6 +163,7 @@ export default function App() {
   const handleWhistleDetected = () => {
     const now = Date.now();
     setLastWhistleTime(now);
+    loudFramesRef.current = 0; // Reset sustain counter
     setStatus('Cooldown');
     setWhistleCount(prev => prev + 1);
     
