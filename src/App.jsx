@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Activity, Zap, Radio } from 'lucide-react';
 
 export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [whistleCount, setWhistleCount] = useState(0);
   const [targetWhistles, setTargetWhistles] = useState(3);
-  const [sensitivity, setSensitivity] = useState(50); // 0-100
-  const [minDuration, setMinDuration] = useState(2.0); // Seconds
+  const [sensitivity, setSensitivity] = useState(50);
+  const [minDuration, setMinDuration] = useState(2.0);
   const [volumeLevel, setVolumeLevel] = useState(0);
   
-  const [status, setStatus] = useState('Ready'); // Ready, Listening, Cooldown, Triggered
+  const [status, setStatus] = useState('Ready'); 
   const [errorMessage, setErrorMessage] = useState('');
   const [showSettings, setShowSettings] = useState(false);
 
@@ -23,7 +23,7 @@ export default function App() {
   const animationRef = useRef(null);
   const streamRef = useRef(null);
   
-  // LOGIC REFS
+  // Logic Refs
   const loudFramesRef = useRef(0);
   const statusRef = useRef('Ready');
   const sensitivityRef = useRef(50);
@@ -32,7 +32,6 @@ export default function App() {
   const targetWhistlesRef = useRef(3);
   const whistleCountRef = useRef(0);
 
-  // Constants
   const COOLDOWN_MS = 5000; 
   
   // Sync Refs
@@ -52,14 +51,12 @@ export default function App() {
     if (savedAlexa) setAlexaUrl(savedAlexa);
     if (savedWhatsapp) setWhatsappUrl(savedWhatsapp);
     if (savedTarget) {
-        const target = parseInt(savedTarget);
-        setTargetWhistles(target);
-        targetWhistlesRef.current = target;
+        setTargetWhistles(parseInt(savedTarget));
+        targetWhistlesRef.current = parseInt(savedTarget);
     }
     if (savedDuration) {
-        const duration = parseFloat(savedDuration);
-        setMinDuration(duration);
-        minDurationRef.current = duration;
+        setMinDuration(parseFloat(savedDuration));
+        minDurationRef.current = parseFloat(savedDuration);
     }
 
     return () => stopListening();
@@ -129,7 +126,7 @@ export default function App() {
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
     const rms = Math.sqrt(sum / dataArray.length);
-    const normalizedVolume = Math.min((rms / 255) * 100 * 2, 100);
+    const normalizedVolume = Math.min((rms / 255) * 100 * 2.5, 100); // Slightly boosted for UI response
     
     setVolumeLevel(normalizedVolume);
 
@@ -180,19 +177,8 @@ export default function App() {
     setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 10000);
 
     let notifications = [];
-    
-    // Universal GET Request (Works for IFTTT, CallMeBot, NotifyMe)
-    if (alexaUrl) {
-      notifications.push(
-        fetch(alexaUrl, { method: 'GET', mode: 'no-cors' })
-      );
-    }
-    
-    if (whatsappUrl) {
-      notifications.push(
-        fetch(whatsappUrl, { method: 'GET', mode: 'no-cors' })
-      );
-    }
+    if (alexaUrl) notifications.push(fetch(alexaUrl, { method: 'GET', mode: 'no-cors' }));
+    if (whatsappUrl) notifications.push(fetch(whatsappUrl, { method: 'GET', mode: 'no-cors' }));
 
     if (notifications.length > 0) {
         await Promise.all(notifications);
@@ -208,186 +194,196 @@ export default function App() {
     setStatus('Ready');
   };
 
-  // --- UI CONSTANTS & CALCULATIONS ---
+  // UI Constants
   const RADIUS = 120;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
   return (
-    // MAIN CONTAINER
-    // Forced black background via inline style to prevent transparency
-    <div 
-        className="h-[100vh] w-full font-sans flex flex-col overflow-hidden touch-none select-none relative"
-        style={{ backgroundColor: '#000000', color: 'white' }}
-    >
+    <div className="h-[100dvh] w-full bg-slate-950 text-slate-100 font-sans flex flex-col overflow-hidden touch-none select-none relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
       
+      {/* --- Ambient Background Glows --- */}
+      <div className="absolute top-0 left-0 w-full h-1/2 bg-cyan-500/5 blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-full h-1/2 bg-violet-500/5 blur-[120px] pointer-events-none"></div>
+
       {/* --- Header --- */}
-      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/10 z-10" style={{ backgroundColor: '#000000' }}>
-         <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-black">
-                <Mic size={20} strokeWidth={3} />
+      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/5 bg-slate-950/50 backdrop-blur-sm z-10">
+         <div className="flex items-center gap-3">
+            <div className="relative">
+                <div className="absolute inset-0 bg-cyan-500 blur-md opacity-20"></div>
+                <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-cyan-400 relative z-10 shadow-lg">
+                    <Mic size={18} />
+                </div>
             </div>
-            <span className="font-bold text-lg tracking-tight">Whistle<span className="text-orange-500">Count</span></span>
+            <span className="font-bold text-lg tracking-wide text-white">Whistle<span className="text-cyan-400">Sync</span></span>
          </div>
          <button 
             onClick={() => setShowSettings(true)}
-            className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform"
-            style={{ backgroundColor: '#27272a', color: '#d4d4d8' }}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/5 active:scale-95 text-slate-400 hover:text-cyan-400"
          >
             <Settings size={22} />
          </button>
       </header>
 
       {/* --- Main Content --- */}
-      <main className="flex-1 flex flex-col items-center justify-center relative p-4 gap-8">
+      <main className="flex-1 flex flex-col items-center justify-center relative p-4 gap-10">
          
-         {/* STATUS INDICATOR */}
-         <div className="flex flex-col items-center gap-2 h-16 justify-end">
-             {status === 'Ready' && <span className="text-gray-400 text-xl font-medium">Ready to start</span>}
+         {/* STATUS BADGE */}
+         <div className="h-12 flex items-end">
+             {status === 'Ready' && (
+                 <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-700 bg-slate-900/50 text-slate-400 text-sm font-medium tracking-wider uppercase">
+                     <Radio size={14} /> System Ready
+                 </div>
+             )}
              {status === 'Listening' && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-emerald-900/50 rounded-full border border-emerald-500/50">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                <div className="flex items-center gap-3 px-5 py-2 rounded-full border border-cyan-500/30 bg-cyan-950/30 shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
                     </span>
-                    <span className="text-emerald-400 font-bold uppercase tracking-wide text-sm">Listening...</span>
+                    <span className="text-cyan-300 font-bold uppercase tracking-widest text-xs">Monitoring Audio</span>
                 </div>
              )}
              {status === 'Cooldown' && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-amber-900/50 rounded-full border border-amber-500/50">
+                <div className="flex items-center gap-3 px-5 py-2 rounded-full border border-amber-500/30 bg-amber-950/30">
                     <Clock size={16} className="text-amber-500 animate-spin-slow" />
-                    <span className="text-amber-500 font-bold uppercase tracking-wide text-sm">Wait (5s)</span>
+                    <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Processing (5s)</span>
                 </div>
              )}
              {status === 'Triggered' && (
-                <div className="flex items-center gap-3 px-6 py-3 bg-red-600 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-bounce">
-                    <AlertCircle size={24} className="text-white" />
-                    <span className="text-white font-black uppercase tracking-wide text-lg">DONE!</span>
+                <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.5)] animate-bounce">
+                    <Activity size={20} className="text-white" />
+                    <span className="text-white font-black uppercase tracking-widest text-sm">TARGET REACHED</span>
                 </div>
              )}
          </div>
 
-         {/* MAIN VISUALIZER */}
-         <div className="relative w-72 h-72 flex items-center justify-center">
-            {/* Base Track */}
+         {/* FUTURISTIC HUD VISUALIZER */}
+         <div className="relative w-80 h-80 flex items-center justify-center">
+            
+            {/* Outer Static Ring */}
             <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
-               <circle cx="50%" cy="50%" r="48%" fill="none" stroke="#27272a" strokeWidth="20" strokeLinecap="round" />
+               <circle cx="50%" cy="50%" r="48%" fill="none" stroke="#1e293b" strokeWidth="6" />
+               <circle cx="50%" cy="50%" r="42%" fill="none" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
             </svg>
-            {/* Volume Meter */}
-            <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
+
+            {/* Dynamic Volume Arc (Glow effect) */}
+            <svg className="absolute inset-0 w-full h-full rotate-[-90deg] drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
                <circle 
                   cx="50%" cy="50%" r="48%" 
                   fill="none" 
-                  stroke={volumeLevel > (100 - sensitivity) ? "#ffffff" : "#f97316"} 
-                  strokeWidth="20" 
+                  stroke={volumeLevel > (100 - sensitivity) ? "#fff" : "#22d3ee"} 
+                  strokeWidth="6" 
                   strokeLinecap="round"
                   strokeDasharray={CIRCUMFERENCE}
                   strokeDashoffset={CIRCUMFERENCE - ((volumeLevel / 100) * CIRCUMFERENCE)}
-                  className="transition-all duration-75 ease-out"
-                  style={{ opacity: isListening ? 1 : 0.3 }}
+                  className="transition-all duration-100 ease-linear"
+                  style={{ opacity: isListening ? 1 : 0 }}
                />
             </svg>
+
             {/* Threshold Marker */}
             <div 
                 className="absolute inset-0 pointer-events-none transition-all duration-300"
                 style={{ transform: `rotate(${( (100-sensitivity)/100 * 360 )}deg)` }}
             >
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1 w-1 h-6 bg-white z-20 shadow-[0_0_5px_black]" />
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1.5 w-0.5 h-8 bg-white z-20 shadow-[0_0_10px_white]" />
             </div>
-            {/* Center Counter */}
-            <div className="flex flex-col items-center z-10">
-                <span className="text-gray-500 font-bold text-sm uppercase tracking-widest">Count</span>
-                <span className="text-[7rem] font-bold leading-none tracking-tighter tabular-nums text-white">
-                    {whistleCount}
-                </span>
-                <div className="px-3 py-1 rounded-full mt-2" style={{ backgroundColor: '#27272a' }}>
-                    <span className="text-gray-400 font-semibold text-sm">Target: <span className="text-white">{targetWhistles}</span></span>
+
+            {/* Central Data Display */}
+            <div className="flex flex-col items-center z-10 relative">
+                {/* Glass Panel Background */}
+                <div className="absolute inset-[-40px] bg-slate-900/50 backdrop-blur-sm rounded-full -z-10 border border-white/5"></div>
+                
+                <span className="text-slate-500 font-mono text-[10px] uppercase tracking-[0.2em] mb-2">Cycle Count</span>
+                <div className="relative">
+                    <span className="text-[6rem] font-bold leading-none tracking-tighter tabular-nums text-white drop-shadow-2xl font-mono">
+                        {whistleCount}
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 mt-4 px-3 py-1 bg-slate-800/80 rounded border border-slate-700">
+                    <span className="text-[10px] text-slate-400 font-mono uppercase">Target</span>
+                    <span className="text-sm font-bold text-cyan-400 font-mono">{targetWhistles}</span>
                 </div>
             </div>
          </div>
          
-         {/* Instruction / Helper Text */}
-         <div className="h-8 text-center px-4">
-             {isListening && volumeLevel > 5 && (
-                 <p className="text-xs text-gray-500 font-mono">
-                     Loudness: {Math.round(volumeLevel)}% / Req: {100-sensitivity}%
-                 </p>
+         {/* Audio Telemetry */}
+         <div className="h-8 text-center px-4 w-full max-w-xs">
+             {isListening && volumeLevel > 2 && (
+                 <div className="flex justify-between items-center text-[10px] font-mono text-cyan-500/80">
+                    <span>LVL: {Math.round(volumeLevel).toString().padStart(3, '0')}</span>
+                    <div className="flex-1 mx-2 h-1 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-cyan-500/50" style={{ width: `${volumeLevel}%` }}></div>
+                    </div>
+                    <span>THR: {100-sensitivity}</span>
+                 </div>
              )}
          </div>
+
       </main>
 
-      {/* --- Footer --- */}
-      <footer className="p-6 border-t border-white/10 shrink-0 safe-area-bottom" style={{ backgroundColor: '#000000' }}>
+      {/* --- Footer Controls --- */}
+      <footer className="p-6 bg-slate-950/80 backdrop-blur-md border-t border-white/5 shrink-0 safe-area-bottom z-20">
          {!isListening ? (
              <button 
                 onClick={startListening}
-                className="w-full h-20 bg-orange-500 hover:bg-orange-400 rounded-2xl flex items-center justify-center gap-3 text-black font-bold text-2xl shadow-lg active:scale-[0.98] transition-all"
+                className="group relative w-full h-16 bg-cyan-500 hover:bg-cyan-400 rounded-lg flex items-center justify-center gap-3 text-slate-950 font-bold text-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-[0.99] transition-all overflow-hidden"
              >
-                <Play fill="currentColor" size={32} /> START
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <Play fill="currentColor" size={24} /> 
+                <span className="tracking-wider">INITIALIZE</span>
              </button>
          ) : (
              <div className="flex gap-4">
                 <button 
                     onClick={stopListening}
-                    className="flex-1 h-20 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-xl border border-white/10 active:scale-[0.98] transition-all"
-                    style={{ backgroundColor: '#18181b' }}
+                    className="flex-1 h-16 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center gap-3 text-white font-bold text-lg border border-slate-700 shadow-lg active:scale-[0.99] transition-all"
                 >
-                    <Square fill="currentColor" size={24} /> STOP
+                    <Square fill="currentColor" size={20} /> TERMINATE
                 </button>
                 <button 
                     onClick={resetApp}
-                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-gray-400 border border-white/10 active:scale-[0.98] transition-all"
-                    style={{ backgroundColor: '#18181b' }}
+                    className="w-16 h-16 bg-slate-900 hover:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-slate-700 active:scale-[0.99] transition-all"
                 >
-                    <RefreshCw size={28} />
+                    <RefreshCw size={24} />
                 </button>
              </div>
          )}
       </footer>
 
-      {/* --- Settings Sheet (NUCLEAR PROOF CSS) --- */}
+      {/* --- Settings Modal (Fixed Overlay) --- */}
       {showSettings && (
-        <div 
-            style={{ 
-                position: 'fixed', 
-                top: 0, 
-                left: 0, 
-                width: '100%', 
-                height: '100%', 
-                backgroundColor: '#000000', 
-                zIndex: 9999,
-                display: 'flex',
-                flexDirection: 'column'
-            }}
-        >
-            {/* Header */}
-            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 shrink-0" style={{ backgroundColor: '#000000' }}>
-                <h2 className="text-xl font-bold text-white">Settings</h2>
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
+            {/* Modal Header */}
+            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 shrink-0 bg-slate-950/50">
+                <div className="flex items-center gap-3">
+                    <Settings size={20} className="text-cyan-400" />
+                    <h2 className="text-lg font-bold text-white tracking-wide">SYSTEM CONFIG</h2>
+                </div>
                 <button 
                     onClick={() => setShowSettings(false)} 
-                    className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10"
-                    style={{ backgroundColor: '#18181b', color: 'white' }}
+                    className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white border border-slate-700"
                 >
-                    <X size={24} />
+                    <X size={18} />
                 </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8" style={{ backgroundColor: '#000000' }}>
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 
                 {/* Target Section */}
                 <section>
-                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 block">Target Whistles</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block font-mono">Target Threshold</label>
                     <div className="grid grid-cols-4 gap-3">
                         {[1, 2, 3, 4, 5, 6, 8, 10].map(num => (
                             <button 
                                 key={num}
                                 onClick={() => setTargetWhistles(num)}
-                                className={`h-14 rounded-xl font-bold text-lg transition-all border-2 ${
+                                className={`h-12 rounded bg-slate-900 border font-mono font-bold text-lg transition-all ${
                                     targetWhistles === num 
-                                    ? 'bg-orange-500 border-orange-500 text-black' 
-                                    : 'border-gray-800 text-gray-400'
+                                    ? 'border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
+                                    : 'border-slate-800 text-slate-500 hover:border-slate-600'
                                 }`}
-                                style={targetWhistles !== num ? { backgroundColor: '#18181b' } : {}}
                             >
                                 {num}
                             </button>
@@ -396,69 +392,67 @@ export default function App() {
                 </section>
 
                 {/* Sensitivity Section */}
-                <section className="p-5 rounded-2xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
+                <section className="p-5 rounded-lg border border-slate-800 bg-slate-900/50">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500"><Volume2 size={24} /></div>
+                            <Volume2 size={20} className="text-cyan-400" />
                             <div>
-                                <h3 className="font-bold text-lg text-white">Mic Sensitivity</h3>
-                                <p className="text-xs text-gray-500">Adjust if whistles are missed</p>
+                                <h3 className="font-bold text-sm text-white uppercase tracking-wide">Input Gain</h3>
+                                <p className="text-[10px] text-slate-500 font-mono">SIGNAL SENSITIVITY</p>
                             </div>
                         </div>
-                        <span className="font-mono text-xl font-bold text-orange-500">{sensitivity}%</span>
+                        <span className="font-mono text-xl font-bold text-cyan-400">{sensitivity}%</span>
                     </div>
                     <input 
                         type="range" min="1" max="95" 
                         value={sensitivity} 
                         onChange={(e) => setSensitivity(Number(e.target.value))}
-                        className="w-full h-4 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                        style={{ backgroundColor: '#27272a' }}
+                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                     />
                 </section>
 
                 {/* Duration Section */}
-                <section className="p-5 rounded-2xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
+                <section className="p-5 rounded-lg border border-slate-800 bg-slate-900/50">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Clock size={24} /></div>
+                            <Zap size={20} className="text-violet-400" />
                             <div>
-                                <h3 className="font-bold text-lg text-white">Min Duration</h3>
-                                <p className="text-xs text-gray-500">Ignore short noises</p>
+                                <h3 className="font-bold text-sm text-white uppercase tracking-wide">Pulse Width</h3>
+                                <p className="text-[10px] text-slate-500 font-mono">MINIMUM DURATION</p>
                             </div>
                         </div>
-                        <span className="font-mono text-xl font-bold text-blue-500">{minDuration}s</span>
+                        <span className="font-mono text-xl font-bold text-violet-400">{minDuration}s</span>
                     </div>
                     <input 
                         type="range" min="0.5" max="5.0" step="0.5"
                         value={minDuration} 
                         onChange={(e) => setMinDuration(Number(e.target.value))}
-                        className="w-full h-4 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        style={{ backgroundColor: '#27272a' }}
+                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-400"
                     />
                 </section>
 
-                {/* Automation Section */}
+                {/* Webhooks Section */}
                 <section>
-                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 block">Automations</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block font-mono">Data Uplinks</label>
                     <div className="space-y-3">
-                        <div className="flex items-center gap-3 p-4 rounded-xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
-                            <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-gray-600"} />
+                        <div className="flex items-center gap-3 p-3 rounded bg-slate-900 border border-slate-800 focus-within:border-cyan-500/50 transition-colors">
+                            <Wifi size={18} className={alexaUrl ? "text-cyan-400" : "text-slate-600"} />
                             <input 
                                 type="text" 
-                                placeholder="Alexa Webhook URL"
+                                placeholder="ALEXA_WEBHOOK_URI"
                                 value={alexaUrl} 
                                 onChange={(e) => setAlexaUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-gray-200 placeholder-gray-600 focus:outline-none h-full"
+                                className="flex-1 bg-transparent text-xs font-mono text-slate-300 placeholder-slate-700 focus:outline-none"
                             />
                         </div>
-                         <div className="flex items-center gap-3 p-4 rounded-xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
-                            <MessageCircle size={20} className={whatsappUrl ? "text-green-400" : "text-gray-600"} />
+                         <div className="flex items-center gap-3 p-3 rounded bg-slate-900 border border-slate-800 focus-within:border-green-500/50 transition-colors">
+                            <MessageCircle size={18} className={whatsappUrl ? "text-green-400" : "text-slate-600"} />
                             <input 
                                 type="text" 
-                                placeholder="Paste WhatsApp URL"
+                                placeholder="WHATSAPP_API_ENDPOINT"
                                 value={whatsappUrl} 
                                 onChange={(e) => setWhatsappUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-gray-200 placeholder-gray-600 focus:outline-none h-full"
+                                className="flex-1 bg-transparent text-xs font-mono text-slate-300 placeholder-slate-700 focus:outline-none"
                             />
                         </div>
                     </div>
@@ -469,9 +463,9 @@ export default function App() {
 
       {/* Error Toast */}
       {errorMessage && (
-        <div className="fixed top-20 left-4 right-4 bg-red-500/90 text-white p-4 rounded-xl shadow-xl flex items-center gap-3 animate-in slide-in-from-top-5 z-40">
-            <AlertCircle size={24} />
-            <span className="font-medium">{errorMessage}</span>
+        <div className="fixed top-20 left-4 right-4 bg-rose-500/10 border border-rose-500/50 text-rose-200 p-4 rounded backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-5 z-50">
+            <AlertCircle size={20} />
+            <span className="font-mono text-xs">{errorMessage}</span>
         </div>
       )}
 
