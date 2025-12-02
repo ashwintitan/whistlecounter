@@ -224,10 +224,13 @@ export default function App() {
 
   return (
     // MAIN CONTAINER: Fixed viewport height, no scroll, no touch actions
-    <div className="h-[100dvh] w-full bg-black text-white font-sans flex flex-col overflow-hidden touch-none select-none relative">
+    <div 
+        className="h-[100dvh] w-full text-white font-sans flex flex-col overflow-hidden touch-none select-none relative"
+        style={{ backgroundColor: '#000000' }}
+    >
       
       {/* --- Header: Minimal & Functional --- */}
-      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/10 bg-black z-10">
+      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/10 z-10" style={{ backgroundColor: '#000000' }}>
          <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-black">
                 <Mic size={20} strokeWidth={3} />
@@ -236,7 +239,8 @@ export default function App() {
          </div>
          <button 
             onClick={() => setShowSettings(true)}
-            className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center active:scale-95 transition-transform hover:bg-gray-800"
+            className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+            style={{ backgroundColor: '#18181b' }}
          >
             <Settings size={22} className="text-gray-300" />
          </button>
@@ -312,7 +316,7 @@ export default function App() {
                 <span className="text-[7rem] font-bold leading-none tracking-tighter tabular-nums">
                     {whistleCount}
                 </span>
-                <div className="bg-gray-800 px-3 py-1 rounded-full mt-2">
+                <div className="px-3 py-1 rounded-full mt-2" style={{ backgroundColor: '#27272a' }}>
                     <span className="text-gray-400 font-semibold text-sm">Target: <span className="text-white">{targetWhistles}</span></span>
                 </div>
             </div>
@@ -330,7 +334,7 @@ export default function App() {
       </main>
 
       {/* --- Footer: Huge Action Button --- */}
-      <footer className="p-6 bg-black border-t border-white/10 shrink-0 safe-area-bottom">
+      <footer className="p-6 border-t border-white/10 shrink-0 safe-area-bottom" style={{ backgroundColor: '#000000' }}>
          {!isListening ? (
              <button 
                 onClick={startListening}
@@ -342,13 +346,15 @@ export default function App() {
              <div className="flex gap-4">
                 <button 
                     onClick={stopListening}
-                    className="flex-1 h-20 bg-gray-900 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-xl border border-white/10 active:scale-[0.98] transition-all hover:bg-gray-800"
+                    className="flex-1 h-20 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-xl border border-white/10 active:scale-[0.98] transition-all"
+                    style={{ backgroundColor: '#18181b' }}
                 >
                     <Square fill="currentColor" size={24} /> STOP
                 </button>
                 <button 
                     onClick={resetApp}
-                    className="w-20 h-20 bg-gray-900 rounded-2xl flex items-center justify-center text-gray-400 border border-white/10 active:scale-[0.98] transition-all hover:bg-gray-800 hover:text-white"
+                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-gray-400 border border-white/10 active:scale-[0.98] transition-all"
+                    style={{ backgroundColor: '#18181b' }}
                 >
                     <RefreshCw size={28} />
                 </button>
@@ -358,17 +364,20 @@ export default function App() {
 
       {/* --- Settings Sheet (Full Overlay) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in slide-in-from-bottom-full duration-300">
+        <div 
+            className="fixed inset-0 z-[100] flex flex-col animate-in slide-in-from-bottom-full duration-300"
+            style={{ backgroundColor: '#000000' }}
+        >
             {/* Header */}
-            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 bg-gray-900 shrink-0">
+            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 shrink-0" style={{ backgroundColor: '#000000' }}>
                 <h2 className="text-xl font-bold text-white">Settings</h2>
-                <button onClick={() => setShowSettings(false)} className="w-10 h-10 bg-black rounded-full flex items-center justify-center hover:bg-gray-800 border border-white/10">
+                <button onClick={() => setShowSettings(false)} className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10" style={{ backgroundColor: '#18181b' }}>
                     <X size={24} />
                 </button>
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-black">
+            <div className="flex-1 overflow-y-auto p-6 space-y-8" style={{ backgroundColor: '#000000' }}>
                 
                 {/* Target Section */}
                 <section>
@@ -381,8 +390,9 @@ export default function App() {
                                 className={`h-14 rounded-xl font-bold text-lg transition-all border-2 ${
                                     targetWhistles === num 
                                     ? 'bg-orange-500 border-orange-500 text-black' 
-                                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:bg-gray-800'
+                                    : 'border-gray-800 text-gray-400 hover:bg-gray-800'
                                 }`}
+                                style={targetWhistles !== num ? { backgroundColor: '#18181b' } : {}}
                             >
                                 {num}
                             </button>
@@ -391,7 +401,7 @@ export default function App() {
                 </section>
 
                 {/* Sensitivity Section */}
-                <section className="bg-gray-900 p-5 rounded-2xl border border-white/5">
+                <section className="p-5 rounded-2xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500"><Volume2 size={24} /></div>
@@ -406,7 +416,8 @@ export default function App() {
                         type="range" min="1" max="95" 
                         value={sensitivity} 
                         onChange={(e) => setSensitivity(Number(e.target.value))}
-                        className="w-full h-4 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        className="w-full h-4 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        style={{ backgroundColor: '#27272a' }}
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-2 font-bold uppercase">
                         <span>Hard to Trigger</span>
@@ -415,7 +426,7 @@ export default function App() {
                 </section>
 
                 {/* Duration Section */}
-                <section className="bg-gray-900 p-5 rounded-2xl border border-white/5">
+                <section className="p-5 rounded-2xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Clock size={24} /></div>
@@ -430,7 +441,8 @@ export default function App() {
                         type="range" min="0.5" max="5.0" step="0.5"
                         value={minDuration} 
                         onChange={(e) => setMinDuration(Number(e.target.value))}
-                        className="w-full h-4 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="w-full h-4 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        style={{ backgroundColor: '#27272a' }}
                     />
                 </section>
 
@@ -438,7 +450,7 @@ export default function App() {
                 <section>
                     <label className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 block">Automations</label>
                     <div className="space-y-3">
-                        <div className="flex items-center gap-3 bg-gray-900 p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-3 p-4 rounded-xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
                             <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-gray-600"} />
                             <input 
                                 type="text" 
@@ -448,7 +460,7 @@ export default function App() {
                                 className="flex-1 bg-transparent text-gray-200 placeholder-gray-600 focus:outline-none h-full"
                             />
                         </div>
-                         <div className="flex items-center gap-3 bg-gray-900 p-4 rounded-xl border border-white/5">
+                         <div className="flex items-center gap-3 p-4 rounded-xl border border-white/5" style={{ backgroundColor: '#18181b' }}>
                             <MessageCircle size={20} className={whatsappUrl ? "text-green-400" : "text-gray-600"} />
                             <input 
                                 type="text" 
