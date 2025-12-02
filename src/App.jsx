@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Settings, Play, Square, AlertTriangle, Wifi, Info, MessageCircle, Clock } from 'lucide-react';
+import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function App() {
   const [isListening, setIsListening] = useState(false);
@@ -8,6 +8,7 @@ export default function App() {
   const [sensitivity, setSensitivity] = useState(50); // 0-100
   const [minDuration, setMinDuration] = useState(2.0); // Seconds
   const [volumeLevel, setVolumeLevel] = useState(0);
+  
   // We keep lastWhistleTime in state for potential UI updates, but use ref for logic
   const [status, setStatus] = useState('Ready'); // Ready, Listening, Cooldown, Triggered
   const [errorMessage, setErrorMessage] = useState('');
@@ -184,7 +185,6 @@ export default function App() {
     const timeSinceLast = now - lastWhistleTimeRef.current;
     
     // Calculate required frames based on duration setting (approx 60fps)
-    // e.g., 2.0s * 60 = 120 frames
     const requiredFrames = minDurationRef.current * 60;
 
     if (currentStatus === 'Listening' && timeSinceLast > COOLDOWN_MS) {
@@ -269,188 +269,258 @@ export default function App() {
     setStatus('Ready');
   };
 
+  // --- UI HELPER FUNCTIONS ---
+
+  const getStatusColor = () => {
+    switch(status) {
+      case 'Listening': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Cooldown': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'Triggered': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+    }
+  };
+
+  const getStatusText = () => {
+    switch(status) {
+      case 'Listening': return 'Listening for whistles...';
+      case 'Cooldown': return 'Cooling down...';
+      case 'Triggered': return 'Target Reached!';
+      default: return 'Ready to start';
+    }
+  };
+
+  const getGlowColor = () => {
+    if (status === 'Listening') return 'rgba(16, 185, 129, '; // emerald
+    if (status === 'Cooldown') return 'rgba(245, 158, 11, '; // amber
+    if (status === 'Triggered') return 'rgba(244, 63, 94, '; // rose
+    return 'rgba(139, 92, 246, '; // violet (default)
+  };
+
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center p-4 font-sans">
+    <div className="relative min-h-screen bg-zinc-950 text-white overflow-hidden selection:bg-violet-500/30 font-sans">
       
-      {/* Header */}
-      <div className="w-full max-w-md flex justify-between items-center mb-8 pt-4">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-            <Mic className="text-blue-400" />
-            Whistle<span className="text-blue-400">Counter</span>
-        </h1>
-        <button 
-            onClick={() => setShowSettings(!showSettings)}
-            className={`p-2 rounded-full transition ${showSettings ? 'bg-blue-600 text-white' : 'bg-slate-800 hover:bg-slate-700'}`}
-        >
-            <Settings size={20} />
-        </button>
-      </div>
+      {/* Background Ambient Gradients */}
+      <div className="fixed top-[-20%] left-[-20%] w-[80vh] h-[80vh] rounded-full bg-violet-600/20 blur-[150px] pointer-events-none" />
+      <div className="fixed bottom-[-20%] right-[-20%] w-[80vh] h-[80vh] rounded-full bg-emerald-600/10 blur-[150px] pointer-events-none" />
 
-      {/* Main Display */}
-      <div className="w-full max-w-md bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-700 relative overflow-hidden">
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center min-h-screen p-6">
         
-        <div className={`absolute top-0 left-0 w-full h-1.5 
-            ${status === 'Listening' ? 'bg-green-500 animate-pulse' : 
-              status === 'Cooldown' ? 'bg-yellow-500' : 
-              status === 'Triggered' ? 'bg-red-500' : 'bg-slate-600'}`} 
-        />
+        {/* Header */}
+        <div className="w-full max-w-lg flex justify-between items-center py-4 mb-8">
+          <div className="flex items-center gap-2">
+             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                <Mic size={18} className="text-white" />
+             </div>
+             <span className="font-bold text-lg tracking-tight text-white/90">Whistle<span className="text-violet-400">Count</span></span>
+          </div>
+          <button 
+              onClick={() => setShowSettings(true)}
+              className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all backdrop-blur-md border border-white/5 active:scale-95"
+          >
+              <Settings size={20} />
+          </button>
+        </div>
 
-        <div className="text-center mb-8">
-            <span className="text-slate-400 text-sm uppercase tracking-wider font-semibold">{status}</span>
-            <div className="mt-4 flex justify-center items-end gap-2">
-                <span className="text-8xl font-black tracking-tighter text-white">
-                    {whistleCount}
-                </span>
-                <span className="text-3xl font-medium text-slate-500 mb-4">/ {targetWhistles}</span>
+        {/* Centerpiece: The Pulse Counter */}
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md">
+            
+            <div className="relative mb-12 group cursor-default">
+               {/* Dynamic Breathing Glow */}
+               <div 
+                  style={{ 
+                      transform: `scale(${1 + volumeLevel/150})`, 
+                      opacity: 0.3 + (volumeLevel/150),
+                      backgroundColor: getGlowColor() + '0.4)'
+                  }} 
+                  className="absolute inset-0 blur-3xl rounded-full transition-all duration-75" 
+               />
+               
+               {/* Main Circle Glass */}
+               <div className="relative w-72 h-72 rounded-full bg-zinc-900/40 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col items-center justify-center transition-all">
+                  
+                  {/* Progress Ring Background */}
+                  <svg className="absolute inset-0 w-full h-full -rotate-90 p-4 opacity-20">
+                    <circle cx="50%" cy="50%" r="48%" fill="none" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+
+                   {/* Count Display */}
+                  <div className="flex flex-col items-center relative z-10">
+                    <span className="text-9xl font-black bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent leading-none tracking-tighter filter drop-shadow-2xl">
+                        {whistleCount}
+                    </span>
+                    <span className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-xs mt-4">
+                        Target: {targetWhistles}
+                    </span>
+                  </div>
+
+                  {/* Volume Mini-Bar (Subtle) */}
+                  <div className="absolute bottom-12 w-24 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-white/50 transition-all duration-75"
+                        style={{ width: `${Math.min(volumeLevel, 100)}%` }}
+                      />
+                  </div>
+               </div>
+
+               {/* Status Pill */}
+               <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${getStatusColor()} transition-colors duration-300`}>
+                      <div className={`w-2 h-2 rounded-full ${status === 'Listening' ? 'bg-emerald-400 animate-pulse' : 'bg-current'}`} />
+                      {getStatusText()}
+                  </div>
+               </div>
             </div>
-            <p className="text-slate-400 mt-2">Whistles Detected</p>
+
+            {/* Main Controls */}
+            <div className="w-full grid grid-cols-2 gap-4">
+                {!isListening ? (
+                    <button 
+                        onClick={startListening}
+                        className="col-span-2 group relative overflow-hidden bg-white text-black font-bold py-5 rounded-2xl flex justify-center items-center gap-3 transition-all active:scale-[0.98] shadow-xl hover:shadow-2xl hover:shadow-white/10"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-r from-violet-200 via-white to-emerald-100 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <span className="relative z-10 flex items-center gap-2">
+                           <Play fill="currentColor" size={20} /> Start Listening
+                        </span>
+                    </button>
+                ) : (
+                    <>
+                    <button 
+                        onClick={stopListening}
+                        className="col-span-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-5 rounded-2xl flex justify-center items-center gap-2 transition-all border border-red-500/20 active:scale-95"
+                    >
+                        <Square fill="currentColor" size={18} /> Stop
+                    </button>
+                    <button 
+                        onClick={resetApp}
+                        className="col-span-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-5 rounded-2xl transition-all active:scale-95 border border-white/5"
+                    >
+                        Reset
+                    </button>
+                    </>
+                )}
+            </div>
+
+             {/* Debug/Info Info (Subtle) */}
+             <div className="mt-8 flex justify-between w-full px-2 text-[10px] text-zinc-600 font-mono">
+                <span>Vol: {Math.round(volumeLevel)}</span>
+                <span>Thresh: {100 - sensitivity}</span>
+            </div>
         </div>
 
-        {/* Visualizer Bar */}
-        <div className="w-full h-8 bg-slate-900 rounded-full mb-8 overflow-hidden relative border border-slate-700">
-            {/* The Volume Level Bar */}
-            <div 
-                className="h-full bg-gradient-to-r from-green-500 to-red-500 transition-all duration-75 ease-out"
-                style={{ width: `${Math.min(volumeLevel, 100)}%` }}
-            />
-            
-            {/* The Threshold Marker Line */}
-            <div 
-                className="absolute top-0 bottom-0 w-1 bg-white z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)]"
-                style={{ left: `${100 - sensitivity}%` }}
-            />
-        </div>
-        <div className="flex justify-between text-xs text-slate-500 mb-8 -mt-6 px-1 font-mono">
-            <span>Quiet</span>
-            {/* DEBUG DISPLAY: Shows exact numbers */}
-            <span className={`font-bold transition-colors ${volumeLevel > (100-sensitivity) ? 'text-green-400' : 'text-slate-400'}`}>
-                Current: {Math.round(volumeLevel)} | Trigger: {100 - sensitivity}
-            </span>
-            <span>Loud</span>
-        </div>
-
-        {/* Controls */}
-        <div className="grid grid-cols-2 gap-4">
-            {!isListening ? (
-                <button 
-                    onClick={startListening}
-                    className="col-span-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/50"
-                >
-                    <Play fill="currentColor" /> Start Listening
-                </button>
-            ) : (
-                <button 
-                    onClick={stopListening}
-                    className="col-span-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all border border-red-500/50"
-                >
-                    <Square fill="currentColor" size={18} /> Stop
-                </button>
-            )}
-            
-            {isListening && (
-                 <button 
-                 onClick={resetApp}
-                 className="col-span-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl transition-all"
-             >
-                 Reset
-             </button>
-            )}
-        </div>
       </div>
 
-      {/* Settings / Instructions Panel */}
+      {/* Settings Modal (Slide Up) */}
       {showSettings && (
-        <div className="w-full max-w-md mt-6 bg-slate-800 rounded-2xl p-6 border border-slate-700 animate-in slide-in-from-bottom-5 mb-10">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-slate-700 pb-2">
-                <Settings size={18} /> Configuration
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowSettings(false)} />
+            
+            {/* Card */}
+            <div className="relative w-full max-w-lg bg-zinc-900/95 border border-white/10 rounded-t-3xl sm:rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
+                
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Settings size={20} className="text-violet-400" /> Configuration
+                    </h3>
+                    <button onClick={() => setShowSettings(false)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+                        <X size={18} />
+                    </button>
+                </div>
 
-            {/* Target Input */}
-            <div className="mb-6">
-                <label className="block text-sm text-slate-400 mb-2">Target Whistles</label>
-                <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map(num => (
-                        <button 
-                            key={num}
-                            onClick={() => setTargetWhistles(num)}
-                            className={`flex-1 py-2 rounded-lg font-bold ${targetWhistles === num ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
-                        >
-                            {num}
-                        </button>
-                    ))}
+                <div className="space-y-8 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                    
+                    {/* Target Selector */}
+                    <div>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4 block">Target Whistles</label>
+                        <div className="flex gap-3">
+                            {[1, 2, 3, 4, 5, 8, 10].map(num => (
+                                <button 
+                                    key={num}
+                                    onClick={() => setTargetWhistles(num)}
+                                    className={`flex-1 aspect-square sm:aspect-auto sm:py-3 rounded-xl font-bold transition-all border ${
+                                        targetWhistles === num 
+                                        ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-900/50 scale-105' 
+                                        : 'bg-zinc-800 border-transparent text-zinc-400 hover:bg-zinc-700'
+                                    }`}
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Sliders Group */}
+                    <div className="grid gap-6 p-5 bg-white/5 rounded-2xl border border-white/5">
+                        {/* Sensitivity */}
+                        <div>
+                            <div className="flex justify-between mb-3">
+                                <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                                    <Volume2 size={16} className="text-emerald-400" /> Mic Sensitivity
+                                </label>
+                                <span className="text-xs font-mono text-zinc-500">{sensitivity}%</span>
+                            </div>
+                            <input 
+                                type="range" min="1" max="95" 
+                                value={sensitivity} 
+                                onChange={(e) => setSensitivity(Number(e.target.value))}
+                                className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400"
+                            />
+                        </div>
+
+                        {/* Duration */}
+                        <div>
+                            <div className="flex justify-between mb-3">
+                                <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                                    <Clock size={16} className="text-amber-400" /> Min Duration
+                                </label>
+                                <span className="text-xs font-mono text-zinc-500">{minDuration}s</span>
+                            </div>
+                            <input 
+                                type="range" min="0.5" max="5.0" step="0.5"
+                                value={minDuration} 
+                                onChange={(e) => setMinDuration(Number(e.target.value))}
+                                className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:accent-amber-400"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Integrations */}
+                    <div className="space-y-4">
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">Integrations</label>
+                        
+                        <div className="relative group">
+                            <Wifi size={16} className={`absolute left-4 top-4 transition-colors ${alexaUrl ? 'text-cyan-400' : 'text-zinc-600'}`} />
+                            <input 
+                                type="text" 
+                                placeholder="Alexa Webhook (IFTTT)"
+                                value={alexaUrl} 
+                                onChange={(e) => setAlexaUrl(e.target.value)}
+                                className="w-full bg-zinc-800/50 border border-white/5 focus:border-cyan-500/50 rounded-xl py-3 pl-12 pr-4 text-sm text-zinc-200 focus:outline-none transition-all focus:bg-zinc-800"
+                            />
+                        </div>
+
+                        <div className="relative group">
+                            <MessageCircle size={16} className={`absolute left-4 top-4 transition-colors ${whatsappUrl ? 'text-green-400' : 'text-zinc-600'}`} />
+                            <input 
+                                type="text" 
+                                placeholder="WhatsApp URL (CallMeBot)"
+                                value={whatsappUrl} 
+                                onChange={(e) => setWhatsappUrl(e.target.value)}
+                                className="w-full bg-zinc-800/50 border border-white/5 focus:border-green-500/50 rounded-xl py-3 pl-12 pr-4 text-sm text-zinc-200 focus:outline-none transition-all focus:bg-zinc-800"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            {/* Sensitivity Input */}
-            <div className="mb-6">
-                <label className="block text-sm text-slate-400 mb-2 flex justify-between">
-                    <span>Mic Sensitivity</span>
-                    <span>{sensitivity}%</span>
-                </label>
-                <input 
-                    type="range" 
-                    min="1" 
-                    max="95" 
-                    value={sensitivity} 
-                    onChange={(e) => setSensitivity(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                />
-            </div>
-
-            {/* Duration Input */}
-            <div className="mb-6">
-                <label className="block text-sm text-slate-400 mb-2 flex justify-between">
-                    <span className="flex items-center gap-2"><Clock size={14} /> Min Whistle Duration</span>
-                    <span>{minDuration}s</span>
-                </label>
-                <input 
-                    type="range" 
-                    min="0.5" 
-                    max="5.0" 
-                    step="0.5"
-                    value={minDuration} 
-                    onChange={(e) => setMinDuration(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                    Sound must be continuous for this long to count.
-                </p>
-            </div>
-
-            {/* Alexa Input */}
-            <div className="mb-6">
-                <label className="block text-sm text-slate-400 mb-2 flex items-center gap-2">
-                    <Wifi size={14} className="text-cyan-400" /> Alexa Webhook (IFTTT)
-                </label>
-                <input 
-                    type="text" 
-                    placeholder="https://maker.ifttt.com/trigger/..."
-                    value={alexaUrl} 
-                    onChange={(e) => setAlexaUrl(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                />
-            </div>
-
-            {/* WhatsApp Input */}
-            <div className="mb-4">
-                <label className="block text-sm text-slate-400 mb-2 flex items-center gap-2">
-                    <MessageCircle size={14} className="text-green-400" /> WhatsApp URL (CallMeBot)
-                </label>
-                <input 
-                    type="text" 
-                    placeholder="https://api.callmebot.com/whatsapp.php?..."
-                    value={whatsappUrl} 
-                    onChange={(e) => setWhatsappUrl(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-green-500"
-                />
-            </div>
-            
         </div>
       )}
 
+      {/* Toast Error */}
       {errorMessage && (
-        <div className="mt-4 p-3 bg-red-500/20 border border-red-500 text-red-200 rounded-lg flex items-center gap-2">
-            <AlertTriangle size={18} /> {errorMessage}
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-red-500/90 text-white text-sm py-2 px-4 rounded-full shadow-xl backdrop-blur-md flex items-center gap-2 animate-in slide-in-from-top-2">
+            <AlertCircle size={16} /> {errorMessage}
         </div>
       )}
 
