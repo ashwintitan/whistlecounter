@@ -180,8 +180,19 @@ export default function App() {
     setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 10000);
 
     let notifications = [];
-    if (alexaUrl) notifications.push(fetch(alexaUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value1: 'Whistles Reached' }) }));
-    if (whatsappUrl) notifications.push(fetch(whatsappUrl, { method: 'GET', mode: 'no-cors' }));
+    
+    // Universal GET Request (Works for IFTTT, CallMeBot, NotifyMe)
+    if (alexaUrl) {
+      notifications.push(
+        fetch(alexaUrl, { method: 'GET', mode: 'no-cors' })
+      );
+    }
+    
+    if (whatsappUrl) {
+      notifications.push(
+        fetch(whatsappUrl, { method: 'GET', mode: 'no-cors' })
+      );
+    }
 
     if (notifications.length > 0) {
         await Promise.all(notifications);
@@ -219,7 +230,7 @@ export default function App() {
 
   return (
     // MAIN CONTAINER: Fixed viewport height, no scroll, no touch actions
-    <div className="h-[100dvh] w-full bg-neutral-950 text-white font-sans flex flex-col overflow-hidden touch-none select-none">
+    <div className="h-[100dvh] w-full bg-neutral-950 text-white font-sans flex flex-col overflow-hidden touch-none select-none relative">
       
       {/* --- Header: Minimal & Functional --- */}
       <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/5">
@@ -353,9 +364,9 @@ export default function App() {
 
       {/* --- Settings Sheet (Full Overlay) --- */}
       {showSettings && (
-        <div className="absolute inset-0 z-50 bg-neutral-950 flex flex-col animate-in slide-in-from-bottom-full duration-300">
+        <div className="fixed inset-0 z-[100] bg-neutral-950 flex flex-col animate-in slide-in-from-bottom-full duration-300">
             {/* Header */}
-            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 bg-neutral-900">
+            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 bg-neutral-900 shrink-0">
                 <h2 className="text-xl font-bold">Settings</h2>
                 <button onClick={() => setShowSettings(false)} className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center">
                     <X size={24} />
@@ -437,7 +448,7 @@ export default function App() {
                             <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-neutral-600"} />
                             <input 
                                 type="text" 
-                                placeholder="Paste Alexa Webhook URL"
+                                placeholder="Alexa Webhook URL (CallMeBot / NotifyMe)"
                                 value={alexaUrl} 
                                 onChange={(e) => setAlexaUrl(e.target.value)}
                                 className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 focus:outline-none h-full"
