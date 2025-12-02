@@ -7,7 +7,7 @@ export default function App() {
   const [targetWhistles, setTargetWhistles] = useState(3);
   const [sensitivity, setSensitivity] = useState(50); // 0-100
   const [volumeLevel, setVolumeLevel] = useState(0);
-  const [lastWhistleTime, setLastWhistleTime] = useState(0);
+  // We keep lastWhistleTime in state for potential UI updates, but use ref for logic
   const [status, setStatus] = useState('Ready'); // Ready, Listening, Cooldown, Triggered
   const [errorMessage, setErrorMessage] = useState('');
   
@@ -24,15 +24,36 @@ export default function App() {
   const animationRef = useRef(null);
   const streamRef = useRef(null);
   
-  // NEW: Ref to track how long a sound has been loud
+  // LOGIC REFS (Crucial for fixing stale closures in the audio loop)
   const loudFramesRef = useRef(0);
+  const statusRef = useRef('Ready');
+  const sensitivityRef = useRef(50);
+  const lastWhistleTimeRef = useRef(0);
+  const targetWhistlesRef = useRef(3);
+  const whistleCountRef = useRef(0);
 
   // Constants
-  const COOLDOWN_MS = 5000; // 5 seconds wait between whistles
-  // NEW: Sound must be loud for ~30 frames (approx 0.5 seconds) to count. 
-  // This prevents instant glitches/claps from counting.
-  const REQUIRED_LOUD_FRAMES = 30; 
+  const COOLDOWN_MS = 5000; 
+  // CHANGED: Lowered to 10 frames (~0.15s) for faster detection
+  const REQUIRED_LOUD_FRAMES = 10; 
   
+  // Sync Refs with State
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    sensitivityRef.current = sensitivity;
+  }, [sensitivity]);
+
+  useEffect(() => {
+    targetWhistlesRef.current = targetWhistles;
+  }, [targetWhistles]);
+
+  useEffect(() => {
+    whistleCountRef.current = whistleCount;
+  }, [whistleCount]);
+
   // Load settings on mount
   useEffect(() => {
     const savedAlexa = localStorage.getItem('alexaUrl');
@@ -41,7 +62,11 @@ export default function App() {
     
     if (savedAlexa) setAlexaUrl(savedAlexa);
     if (savedWhatsapp) setWhatsappUrl(savedWhatsapp);
-    if (savedTarget) setTargetWhistles(parseInt(savedTarget));
+    if (savedTarget) {
+        const target = parseInt(savedTarget);
+        setTargetWhistles(target);
+        targetWhistlesRef.current = target;
+    }
 
     return () => {
       stopListening();
@@ -55,17 +80,17 @@ export default function App() {
     localStorage.setItem('targetWhistles', targetWhistles);
   }, [alexaUrl, whatsappUrl, targetWhistles]);
 
+  // Trigger Logic (Moved out of loop to ensure React state updates correctly)
   useEffect(() => {
     if (whistleCount >= targetWhistles && targetWhistles > 0 && status !== 'Triggered') {
       triggerAlarm();
     }
-  }, [whistleCount, targetWhistles]);
+  }, [whistleCount, targetWhistles, status]);
 
   const startListening = async () => {
     try {
       setErrorMessage('');
       
-      // CRITICAL CHANGE: Disable noise suppression to hear mechanical sounds like whistles
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: false,
@@ -89,11 +114,12 @@ export default function App() {
 
       // Reset logic variables
       loudFramesRef.current = 0;
-      // Set last whistle time to NOW so we don't trigger immediately on start
-      setLastWhistleTime(Date.now()); 
+      lastWhistleTimeRef.current = Date.now(); // Prevent instant trigger
       
       setIsListening(true);
       setStatus('Listening');
+      statusRef.current = 'Listening';
+      
       analyzeAudio();
     } catch (err) {
       console.error("Error accessing microphone:", err);
@@ -108,6 +134,7 @@ export default function App() {
     
     setIsListening(false);
     setStatus('Ready');
+    statusRef.current = 'Ready';
     setVolumeLevel(0);
     loudFramesRef.current = 0;
   };
@@ -118,8 +145,6 @@ export default function App() {
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     analyserRef.current.getByteFrequencyData(dataArray);
 
-    // CHANGED: Use RMS (Root Mean Square) instead of Max/Average
-    // This is the "Standard" way to calculate audio loudness/energy.
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
       sum += dataArray[i] * dataArray[i];
@@ -127,32 +152,32 @@ export default function App() {
     const rms = Math.sqrt(sum / dataArray.length);
     
     // RMS is 0-255. Normalize to 0-100.
-    // We apply a small 1.2x boost to make it readable, but not 3x like before.
-    const normalizedVolume = Math.min((rms / 255) * 100 * 1.5, 100);
+    const normalizedVolume = Math.min((rms / 255) * 100 * 2, 100);
     
     setVolumeLevel(normalizedVolume);
 
-    // Sensitivity Calculation
-    // If sensitivity is 50, threshold is 50.
-    const threshold = 100 - sensitivity; 
-
+    // Read from Ref (latest value)
+    const currentSensitivity = sensitivityRef.current;
+    const threshold = 100 - currentSensitivity; 
     const now = Date.now();
     
-    // LOGIC CHANGE: Sustain Check
+    // Logic: Sustain Check with "Leaky Bucket"
+    // Instead of resetting to 0 immediately on a quiet frame, we decrement.
+    // This allows for tiny stutters in the sound without losing progress.
     if (normalizedVolume > threshold) {
       loudFramesRef.current += 1;
     } else {
-      // If sound dips below threshold, reset the sustain counter
-      // (We decrease it slowly to be forgiving of tiny gaps, or reset to 0)
-      loudFramesRef.current = 0;
+      loudFramesRef.current = Math.max(0, loudFramesRef.current - 1);
     }
 
-    // Only trigger if:
-    // 1. Status is Listening
-    // 2. Cooldown has passed
-    // 3. Sound has been loud for 'REQUIRED_LOUD_FRAMES' consecutive frames
-    if (status === 'Listening' && (now - lastWhistleTime > COOLDOWN_MS)) {
+    // Check Trigger
+    const currentStatus = statusRef.current;
+    const timeSinceLast = now - lastWhistleTimeRef.current;
+
+    if (currentStatus === 'Listening' && timeSinceLast > COOLDOWN_MS) {
        if (loudFramesRef.current > REQUIRED_LOUD_FRAMES) {
+          // We must call the handler but NOT recursively update state in loop too fast
+          // The handler handles the state updates
           handleWhistleDetected();
        }
     }
@@ -162,8 +187,10 @@ export default function App() {
 
   const handleWhistleDetected = () => {
     const now = Date.now();
-    setLastWhistleTime(now);
-    loudFramesRef.current = 0; // Reset sustain counter
+    lastWhistleTimeRef.current = now; // Update Ref immediately for loop
+    loudFramesRef.current = 0; 
+    
+    // Update State
     setStatus('Cooldown');
     setWhistleCount(prev => prev + 1);
     
@@ -173,7 +200,11 @@ export default function App() {
     beep.play().catch(e => console.log('Audio play failed', e));
 
     setTimeout(() => {
-        setStatus(prev => prev === 'Triggered' ? 'Triggered' : 'Listening');
+        // Only go back to Listening if we haven't reached target yet
+        // Accessing ref here to be safe inside timeout
+        if (whistleCountRef.current < targetWhistlesRef.current) {
+            setStatus('Listening');
+        }
     }, COOLDOWN_MS);
   };
 
@@ -193,7 +224,6 @@ export default function App() {
 
     let notifications = [];
 
-    // 2. Trigger Alexa (IFTTT usually expects POST)
     if (alexaUrl) {
       notifications.push(
         fetch(alexaUrl, {
@@ -205,7 +235,6 @@ export default function App() {
       );
     }
 
-    // 3. Trigger WhatsApp (CallMeBot expects GET)
     if (whatsappUrl) {
         notifications.push(
             fetch(whatsappUrl, {
