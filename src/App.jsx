@@ -26,10 +26,9 @@ export default function App() {
 
   // Constants
   const COOLDOWN_MS = 5000; // 5 seconds wait between whistles
-  const TRIGGER_DELAY = 1000; 
-
+  
+  // Load settings on mount
   useEffect(() => {
-    // Load saved settings from local storage
     const savedAlexa = localStorage.getItem('alexaUrl');
     const savedWhatsapp = localStorage.getItem('whatsappUrl');
     const savedTarget = localStorage.getItem('targetWhistles');
@@ -59,7 +58,16 @@ export default function App() {
   const startListening = async () => {
     try {
       setErrorMessage('');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // CRITICAL CHANGE: Disable noise suppression to hear mechanical sounds like whistles
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        } 
+      });
+      
       streamRef.current = stream;
       
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -78,7 +86,7 @@ export default function App() {
       analyzeAudio();
     } catch (err) {
       console.error("Error accessing microphone:", err);
-      setErrorMessage('Could not access microphone. Please allow permissions.');
+      setErrorMessage('Could not access microphone. Ensure you are using HTTPS (Netlify) or Localhost.');
     }
   };
 
@@ -98,18 +106,27 @@ export default function App() {
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     analyserRef.current.getByteFrequencyData(dataArray);
 
-    let sum = 0;
+    // CHANGED: Use Max value instead of Average
+    // Whistles are pure tones (spikes), averaging washes them out.
+    let maxVal = 0;
     for (let i = 0; i < dataArray.length; i++) {
-      sum += dataArray[i];
+      if (dataArray[i] > maxVal) {
+        maxVal = dataArray[i];
+      }
     }
-    const average = sum / dataArray.length;
     
-    setVolumeLevel(average);
+    // Normalize 0-255 to 0-100
+    const normalizedVolume = (maxVal / 255) * 100;
+    setVolumeLevel(normalizedVolume);
 
-    const threshold = 100 - sensitivity + 20; 
+    // Sensitivity Calculation
+    // If sensitivity is 50, threshold is ~150 (out of 255)
+    // If sensitivity is 90, threshold is ~45 (very sensitive)
+    const threshold = 100 - sensitivity; 
+
     const now = Date.now();
     
-    if (average > threshold) {
+    if (normalizedVolume > threshold) {
       if (status === 'Listening' && (now - lastWhistleTime > COOLDOWN_MS)) {
         handleWhistleDetected();
       }
@@ -124,8 +141,9 @@ export default function App() {
     setStatus('Cooldown');
     setWhistleCount(prev => prev + 1);
     
+    // Play confirmation beep
     const beep = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3');
-    beep.volume = 0.5;
+    beep.volume = 1.0;
     beep.play().catch(e => console.log('Audio play failed', e));
 
     setTimeout(() => {
@@ -223,15 +241,23 @@ export default function App() {
         </div>
 
         {/* Visualizer Bar */}
-        <div className="w-full h-4 bg-slate-900 rounded-full mb-8 overflow-hidden relative">
+        <div className="w-full h-8 bg-slate-900 rounded-full mb-8 overflow-hidden relative border border-slate-700">
+            {/* The Volume Level Bar */}
             <div 
-                className="h-full bg-gradient-to-r from-green-400 to-red-500 transition-all duration-100 ease-out"
-                style={{ width: `${Math.min(volumeLevel * 1.5, 100)}%` }}
+                className="h-full bg-gradient-to-r from-green-500 to-red-500 transition-all duration-75 ease-out"
+                style={{ width: `${Math.min(volumeLevel, 100)}%` }}
             />
+            
+            {/* The Threshold Marker Line */}
             <div 
-                className="absolute top-0 bottom-0 w-0.5 bg-white z-10"
+                className="absolute top-0 bottom-0 w-1 bg-white z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)]"
                 style={{ left: `${100 - sensitivity}%` }}
             />
+        </div>
+        <div className="flex justify-between text-xs text-slate-500 mb-8 -mt-6 px-1">
+            <span>Quiet</span>
+            <span>Trigger Threshold</span>
+            <span>Loud</span>
         </div>
 
         {/* Controls */}
@@ -239,7 +265,7 @@ export default function App() {
             {!isListening ? (
                 <button 
                     onClick={startListening}
-                    className="col-span-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all active:scale-95"
+                    className="col-span-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/50"
                 >
                     <Play fill="currentColor" /> Start Listening
                 </button>
@@ -295,11 +321,15 @@ export default function App() {
                 <input 
                     type="range" 
                     min="1" 
-                    max="100" 
+                    max="95" 
                     value={sensitivity} 
                     onChange={(e) => setSensitivity(Number(e.target.value))}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
+                <p className="text-xs text-slate-500 mt-2">
+                    Move Right: Triggers more easily. <br/>
+                    Move Left: Requires louder sound.
+                </p>
             </div>
 
             {/* Alexa Input */}
@@ -328,9 +358,6 @@ export default function App() {
                     onChange={(e) => setWhatsappUrl(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-green-500"
                 />
-                <p className="text-xs text-slate-500 mt-2">
-                    Use CallMeBot API. <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" className="text-blue-400 underline" rel="noreferrer">Get API Key here</a>.
-                </p>
             </div>
             
         </div>
