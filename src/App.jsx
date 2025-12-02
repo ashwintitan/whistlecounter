@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Check, AlertCircle, ChevronRight } from 'lucide-react';
+import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Check, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function App() {
   const [isListening, setIsListening] = useState(false);
@@ -197,232 +197,272 @@ export default function App() {
     setStatus('Ready');
   };
 
-  // --- UI CONSTANTS ---
-  // Circumference for the SVG circle (r=120) -> 2 * pi * 120 ≈ 754
-  const CIRCLE_CIRCUMFERENCE = 754; 
-  const volumeOffset = CIRCLE_CIRCUMFERENCE - (Math.min(volumeLevel, 100) / 100) * CIRCLE_CIRCUMFERENCE;
-  // Calculate where the threshold marker should be (0 to 100%)
-  const thresholdPercent = 100 - sensitivity;
-  // Convert threshold percent to rotation degrees (starts at -90deg)
-  const thresholdRotation = (thresholdPercent / 100) * 360;
+  // --- UI CONSTANTS & CALCULATIONS ---
+  // Simple circle geometry
+  const RADIUS = 120;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  
+  // Progress Calculation
+  const progressPercent = Math.min(whistleCount / targetWhistles, 1);
+  const progressOffset = CIRCUMFERENCE - (progressPercent * CIRCUMFERENCE);
+
+  // Volume Arc Calculation (Visualizer)
+  // We map volume 0-100 to a partial arc
+  const volumePercent = Math.min(volumeLevel, 100) / 100;
+  const volumeDash = volumePercent * CIRCUMFERENCE;
+
+  // Threshold Marker Rotation
+  const thresholdPercent = (100 - sensitivity) / 100;
+  // Map 0-1 to rotation degrees (assuming circle starts at -90)
+  // But for simple visualizer, we might just mark the threshold on a bar. 
+  // Let's stick to the cleaner concentric circle approach.
 
   return (
-    <div className="min-h-[100dvh] bg-neutral-950 text-neutral-100 font-sans selection:bg-orange-500/30 flex flex-col">
+    // MAIN CONTAINER: Fixed viewport height, no scroll, no touch actions
+    <div className="h-[100dvh] w-full bg-neutral-950 text-white font-sans flex flex-col overflow-hidden touch-none select-none">
       
-      {/* --- Header --- */}
-      <header className="px-6 py-6 flex justify-between items-center z-10">
-         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center text-orange-500 shadow-lg">
-                <Mic size={20} strokeWidth={2.5} />
+      {/* --- Header: Minimal & Functional --- */}
+      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/5">
+         <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-black">
+                <Mic size={20} strokeWidth={3} />
             </div>
-            <div>
-                <h1 className="text-lg font-bold leading-none tracking-tight">Whistle<span className="text-orange-500">Count</span></h1>
-                <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-widest mt-1">Pro Edition</p>
-            </div>
+            <span className="font-bold text-lg tracking-tight">Whistle<span className="text-orange-500">Count</span></span>
          </div>
          <button 
             onClick={() => setShowSettings(true)}
-            className="w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center transition-colors text-neutral-400 hover:text-white"
+            className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center active:scale-95 transition-transform"
          >
-            <Settings size={22} />
+            <Settings size={22} className="text-neutral-300" />
          </button>
       </header>
 
-      {/* --- Main Display --- */}
-      <main className="flex-1 flex flex-col items-center justify-center relative p-6">
+      {/* --- Main Content: Centered & Flexible --- */}
+      <main className="flex-1 flex flex-col items-center justify-center relative p-4 gap-8">
          
-         {/* Circular Visualizer */}
-         <div className="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center mb-10">
-            
-            {/* Background Track */}
-            <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
-               <circle cx="50%" cy="50%" r="46%" fill="none" stroke="#262626" strokeWidth="12" strokeLinecap="round" />
-            </svg>
+         {/* STATUS INDICATOR (Large & Clear) */}
+         <div className="flex flex-col items-center gap-2 h-16 justify-end">
+             {status === 'Ready' && <span className="text-neutral-400 text-xl font-medium">Ready to start</span>}
+             {status === 'Listening' && (
+                <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-emerald-400 font-bold uppercase tracking-wide text-sm">Listening...</span>
+                </div>
+             )}
+             {status === 'Cooldown' && (
+                <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 rounded-full border border-amber-500/20">
+                    <Clock size={16} className="text-amber-500 animate-spin-slow" />
+                    <span className="text-amber-500 font-bold uppercase tracking-wide text-sm">Wait (5s)</span>
+                </div>
+             )}
+             {status === 'Triggered' && (
+                <div className="flex items-center gap-3 px-6 py-3 bg-red-500 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-bounce">
+                    <AlertCircle size={24} className="text-white" />
+                    <span className="text-white font-black uppercase tracking-wide text-lg">DONE!</span>
+                </div>
+             )}
+         </div>
 
-            {/* Volume Fill Ring */}
-            <svg className="absolute inset-0 w-full h-full rotate-[-90deg] transition-all duration-100 ease-linear">
+         {/* MAIN VISUALIZER */}
+         <div className="relative w-72 h-72 flex items-center justify-center">
+            
+            {/* 1. Base Track */}
+            <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
                <circle 
-                  cx="50%" cy="50%" r="46%" fill="none" 
-                  stroke={status === 'Triggered' ? '#ef4444' : '#f97316'} 
-                  strokeWidth="12" 
-                  strokeLinecap="round"
-                  strokeDasharray={CIRCLE_CIRCUMFERENCE}
-                  strokeDashoffset={volumeOffset}
-                  className="drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]"
+                 cx="50%" cy="50%" r="48%" 
+                 fill="none" stroke="#262626" strokeWidth="20" strokeLinecap="round" 
                />
             </svg>
 
-            {/* Threshold Marker (Visual Guide) */}
+            {/* 2. Volume Meter (Dynamic Orange Ring) */}
+            <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
+               <circle 
+                  cx="50%" cy="50%" r="48%" 
+                  fill="none" 
+                  stroke={volumeLevel > (100 - sensitivity) ? "#ffffff" : "#f97316"} 
+                  strokeWidth="20" 
+                  strokeLinecap="round"
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={CIRCUMFERENCE - ((volumeLevel / 100) * CIRCUMFERENCE)}
+                  className="transition-all duration-75 ease-out"
+                  style={{ opacity: isListening ? 1 : 0.3 }}
+               />
+            </svg>
+
+            {/* 3. Threshold Marker (Little notch to hit) */}
             <div 
-                className="absolute w-full h-full pointer-events-none"
-                style={{ transform: `rotate(${thresholdRotation}deg)` }}
+                className="absolute inset-0 pointer-events-none transition-all duration-300"
+                style={{ transform: `rotate(${( (100-sensitivity)/100 * 360 )}deg)` }}
             >
-                {/* The marker tick */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-1 h-5 bg-white shadow-[0_0_10px_white] rounded-full z-10" />
+                {/* Visual marker at the top (start) rotated by threshold */}
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1 w-1 h-6 bg-white z-20 shadow-[0_0_5px_black]" />
             </div>
 
-            {/* Central Info */}
-            <div className="relative z-20 flex flex-col items-center text-center">
-                <div className="text-neutral-500 text-xs font-bold uppercase tracking-widest mb-2">
-                    {status === 'Triggered' ? 'Done' : `Whistle ${Math.min(whistleCount + 1, targetWhistles)}`}
-                </div>
-                <div className="text-8xl font-bold tracking-tighter text-white tabular-nums leading-none">
+            {/* 4. Center Counter */}
+            <div className="flex flex-col items-center z-10">
+                <span className="text-neutral-500 font-bold text-sm uppercase tracking-widest">Count</span>
+                <span className="text-[7rem] font-bold leading-none tracking-tighter tabular-nums">
                     {whistleCount}
-                </div>
-                <div className="text-neutral-600 font-medium text-sm mt-2">
-                   of <span className="text-neutral-400">{targetWhistles}</span> target
+                </span>
+                <div className="bg-neutral-800 px-3 py-1 rounded-full mt-2">
+                    <span className="text-neutral-400 font-semibold text-sm">Target: <span className="text-white">{targetWhistles}</span></span>
                 </div>
             </div>
          </div>
-
-         {/* Status Text */}
-         <div className="text-center h-12 mb-4">
-             {status === 'Ready' && <p className="text-neutral-400 text-lg">Tap Start to begin monitoring</p>}
-             {status === 'Listening' && <p className="text-emerald-400 font-medium animate-pulse flex items-center gap-2 justify-center"><span className="w-2 h-2 bg-emerald-400 rounded-full"/> Listening for sound...</p>}
-             {status === 'Cooldown' && <p className="text-amber-400 font-medium flex items-center gap-2 justify-center"><Clock size={16}/> Cooling down (5s)...</p>}
-             {status === 'Triggered' && <p className="text-red-500 font-bold text-xl animate-bounce">ALARM TRIGGERED!</p>}
+         
+         {/* Instruction / Helper Text */}
+         <div className="h-8 text-center px-4">
+             {isListening && volumeLevel > 5 && (
+                 <p className="text-xs text-neutral-500 font-mono">
+                     Loudness: {Math.round(volumeLevel)}% / Req: {100-sensitivity}%
+                 </p>
+             )}
          </div>
 
       </main>
 
-      {/* --- Footer / Controls --- */}
-      <footer className="p-6 bg-neutral-900/50 backdrop-blur-md border-t border-white/5 pb-8 sm:pb-6">
+      {/* --- Footer: Huge Action Button --- */}
+      <footer className="p-6 bg-neutral-900 border-t border-white/5 shrink-0 safe-area-bottom">
          {!isListening ? (
              <button 
                 onClick={startListening}
-                className="w-full bg-orange-500 hover:bg-orange-400 text-black font-bold text-lg h-16 rounded-2xl shadow-[0_0_40px_-10px_rgba(249,115,22,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full h-20 bg-orange-500 hover:bg-orange-400 rounded-2xl flex items-center justify-center gap-3 text-black font-bold text-2xl shadow-lg active:scale-[0.98] transition-all"
              >
-                <Play fill="currentColor" size={24} /> Start Monitoring
+                <Play fill="currentColor" size={32} /> START
              </button>
          ) : (
-             <div className="grid grid-cols-3 gap-3">
+             <div className="flex gap-4">
                 <button 
                     onClick={stopListening}
-                    className="col-span-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold h-16 rounded-2xl border border-white/5 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    className="flex-1 h-20 bg-neutral-800 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-xl border border-white/10 active:scale-[0.98] transition-all"
                 >
-                    <Square fill="currentColor" size={20} /> Stop
+                    <Square fill="currentColor" size={24} /> STOP
                 </button>
                 <button 
                     onClick={resetApp}
-                    className="col-span-1 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white font-semibold h-16 rounded-2xl border border-white/5 active:scale-[0.98] transition-all"
+                    className="w-20 h-20 bg-neutral-800 rounded-2xl flex items-center justify-center text-neutral-400 border border-white/10 active:scale-[0.98] transition-all"
                 >
-                    Reset
+                    <RefreshCw size={28} />
                 </button>
              </div>
          )}
       </footer>
 
-      {/* --- Settings Modal --- */}
+      {/* --- Settings Sheet (Full Overlay) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setShowSettings(false)} />
-            
-            <div className="relative w-full max-w-md bg-neutral-900 border-t sm:border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-10 duration-300 max-h-[85vh] overflow-y-auto">
+        <div className="absolute inset-0 z-50 bg-neutral-950 flex flex-col animate-in slide-in-from-bottom-full duration-300">
+            {/* Header */}
+            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 bg-neutral-900">
+                <h2 className="text-xl font-bold">Settings</h2>
+                <button onClick={() => setShowSettings(false)} className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center">
+                    <X size={24} />
+                </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 
-                <div className="flex justify-between items-center mb-8 sticky top-0 bg-neutral-900 z-10 py-2">
-                    <h2 className="text-xl font-bold text-white">Settings</h2>
-                    <button onClick={() => setShowSettings(false)} className="p-2 bg-neutral-800 rounded-full hover:bg-neutral-700 transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
+                {/* Target Section */}
+                <section>
+                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-wider mb-4 block">Target Whistles</label>
+                    <div className="grid grid-cols-4 gap-3">
+                        {[1, 2, 3, 4, 5, 6, 8, 10].map(num => (
+                            <button 
+                                key={num}
+                                onClick={() => setTargetWhistles(num)}
+                                className={`h-14 rounded-xl font-bold text-lg transition-all border-2 ${
+                                    targetWhistles === num 
+                                    ? 'bg-orange-500 border-orange-500 text-black' 
+                                    : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                                }`}
+                            >
+                                {num}
+                            </button>
+                        ))}
+                    </div>
+                </section>
 
-                <div className="space-y-8">
-                    {/* Target */}
-                    <section>
-                        <div className="flex justify-between items-center mb-4">
-                            <label className="text-sm font-semibold text-neutral-300">Target Count</label>
-                            <span className="text-xs font-bold bg-neutral-800 px-2 py-1 rounded text-orange-500">{targetWhistles} whistles</span>
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                            {[1, 2, 3, 4, 5, 8, 10].map(num => (
-                                <button 
-                                    key={num}
-                                    onClick={() => setTargetWhistles(num)}
-                                    className={`flex-none w-12 h-12 rounded-xl font-bold transition-all border ${
-                                        targetWhistles === num 
-                                        ? 'bg-orange-500 border-orange-400 text-black shadow-lg scale-105' 
-                                        : 'bg-neutral-800 border-transparent text-neutral-400 hover:bg-neutral-700'
-                                    }`}
-                                >
-                                    {num}
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Sensitivity */}
-                    <section className="bg-neutral-800/50 p-4 rounded-2xl border border-white/5">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-2">
-                                <Volume2 size={18} className="text-orange-400" />
-                                <span className="text-sm font-semibold">Sensitivity</span>
+                {/* Sensitivity Section */}
+                <section className="bg-neutral-900 p-5 rounded-2xl border border-white/5">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500"><Volume2 size={24} /></div>
+                            <div>
+                                <h3 className="font-bold text-lg">Mic Sensitivity</h3>
+                                <p className="text-xs text-neutral-500">Adjust if whistles are missed</p>
                             </div>
-                            <span className="text-xs text-neutral-400">{sensitivity}%</span>
                         </div>
-                        <input 
-                            type="range" min="1" max="95" 
-                            value={sensitivity} 
-                            onChange={(e) => setSensitivity(Number(e.target.value))}
-                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                        />
-                        <p className="text-[10px] text-neutral-500 mt-2 text-right">Higher = Easier to trigger</p>
-                    </section>
+                        <span className="font-mono text-xl font-bold text-orange-500">{sensitivity}%</span>
+                    </div>
+                    <input 
+                        type="range" min="1" max="95" 
+                        value={sensitivity} 
+                        onChange={(e) => setSensitivity(Number(e.target.value))}
+                        className="w-full h-4 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                    <div className="flex justify-between text-xs text-neutral-500 mt-2 font-bold uppercase">
+                        <span>Hard to Trigger</span>
+                        <span>Easy to Trigger</span>
+                    </div>
+                </section>
 
-                    {/* Duration */}
-                    <section className="bg-neutral-800/50 p-4 rounded-2xl border border-white/5">
-                         <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-2">
-                                <Clock size={18} className="text-blue-400" />
-                                <span className="text-sm font-semibold">Duration</span>
+                {/* Duration Section */}
+                <section className="bg-neutral-900 p-5 rounded-2xl border border-white/5">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Clock size={24} /></div>
+                            <div>
+                                <h3 className="font-bold text-lg">Min Duration</h3>
+                                <p className="text-xs text-neutral-500">Ignore short noises</p>
                             </div>
-                            <span className="text-xs text-neutral-400">{minDuration}s</span>
                         </div>
-                        <input 
-                            type="range" min="0.5" max="5.0" step="0.5"
-                            value={minDuration} 
-                            onChange={(e) => setMinDuration(Number(e.target.value))}
-                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
-                         <p className="text-[10px] text-neutral-500 mt-2 text-right">Hold sound this long to count</p>
-                    </section>
+                        <span className="font-mono text-xl font-bold text-blue-500">{minDuration}s</span>
+                    </div>
+                    <input 
+                        type="range" min="0.5" max="5.0" step="0.5"
+                        value={minDuration} 
+                        onChange={(e) => setMinDuration(Number(e.target.value))}
+                        className="w-full h-4 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                </section>
 
-                    {/* Webhooks */}
-                    <section className="space-y-3 pt-2 border-t border-neutral-800">
-                        <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Automations</h3>
-                        
-                        <div className="flex items-center gap-3 bg-neutral-800/30 p-3 rounded-xl border border-white/5">
-                            <Wifi size={18} className={alexaUrl ? "text-cyan-400" : "text-neutral-600"} />
+                {/* Automation Section */}
+                <section>
+                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-wider mb-4 block">Automations</label>
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3 bg-neutral-900 p-4 rounded-xl border border-white/5">
+                            <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-neutral-600"} />
                             <input 
                                 type="text" 
-                                placeholder="Alexa Webhook URL..."
+                                placeholder="Paste Alexa Webhook URL"
                                 value={alexaUrl} 
                                 onChange={(e) => setAlexaUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none"
+                                className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 focus:outline-none h-full"
                             />
-                            {alexaUrl && <Check size={16} className="text-emerald-500" />}
                         </div>
-
-                        <div className="flex items-center gap-3 bg-neutral-800/30 p-3 rounded-xl border border-white/5">
-                            <MessageCircle size={18} className={whatsappUrl ? "text-green-400" : "text-neutral-600"} />
+                         <div className="flex items-center gap-3 bg-neutral-900 p-4 rounded-xl border border-white/5">
+                            <MessageCircle size={20} className={whatsappUrl ? "text-green-400" : "text-neutral-600"} />
                             <input 
                                 type="text" 
-                                placeholder="WhatsApp URL..."
+                                placeholder="Paste WhatsApp URL"
                                 value={whatsappUrl} 
                                 onChange={(e) => setWhatsappUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none"
+                                className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 focus:outline-none h-full"
                             />
-                             {whatsappUrl && <Check size={16} className="text-emerald-500" />}
                         </div>
-                    </section>
-                </div>
+                    </div>
+                </section>
             </div>
         </div>
       )}
 
       {/* Error Toast */}
       {errorMessage && (
-        <div className="fixed top-4 left-4 right-4 bg-red-500/10 border border-red-500/50 text-red-200 text-sm p-4 rounded-xl backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-2 z-50">
-            <AlertCircle size={20} className="shrink-0" />
+        <div className="fixed top-20 left-4 right-4 bg-red-500/90 text-white p-4 rounded-xl shadow-xl flex items-center gap-3 animate-in slide-in-from-top-5 z-40">
+            <AlertCircle size={24} />
             <span className="font-medium">{errorMessage}</span>
         </div>
       )}
