@@ -209,27 +209,18 @@ export default function App() {
   };
 
   // --- UI CONSTANTS & CALCULATIONS ---
-  // Simple circle geometry
   const RADIUS = 120;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-  
-  // Progress Calculation
-  const progressPercent = Math.min(whistleCount / targetWhistles, 1);
-  const progressOffset = CIRCUMFERENCE - (progressPercent * CIRCUMFERENCE);
-
-  // Volume Arc Calculation (Visualizer)
-  // We map volume 0-100 to a partial arc
-  const volumePercent = Math.min(volumeLevel, 100) / 100;
-  const volumeDash = volumePercent * CIRCUMFERENCE;
 
   return (
-    // MAIN CONTAINER: Fixed viewport height, no scroll, no touch actions
+    // MAIN CONTAINER
+    // Forced black background via inline style to prevent transparency
     <div 
-        className="h-[100dvh] w-full text-white font-sans flex flex-col overflow-hidden touch-none select-none relative"
-        style={{ backgroundColor: '#000000' }}
+        className="h-[100vh] w-full font-sans flex flex-col overflow-hidden touch-none select-none relative"
+        style={{ backgroundColor: '#000000', color: 'white' }}
     >
       
-      {/* --- Header: Minimal & Functional --- */}
+      {/* --- Header --- */}
       <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/10 z-10" style={{ backgroundColor: '#000000' }}>
          <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-black">
@@ -240,20 +231,20 @@ export default function App() {
          <button 
             onClick={() => setShowSettings(true)}
             className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform"
-            style={{ backgroundColor: '#18181b' }}
+            style={{ backgroundColor: '#27272a', color: '#d4d4d8' }}
          >
-            <Settings size={22} className="text-gray-300" />
+            <Settings size={22} />
          </button>
       </header>
 
-      {/* --- Main Content: Centered & Flexible --- */}
+      {/* --- Main Content --- */}
       <main className="flex-1 flex flex-col items-center justify-center relative p-4 gap-8">
          
-         {/* STATUS INDICATOR (Large & Clear) */}
+         {/* STATUS INDICATOR */}
          <div className="flex flex-col items-center gap-2 h-16 justify-end">
              {status === 'Ready' && <span className="text-gray-400 text-xl font-medium">Ready to start</span>}
              {status === 'Listening' && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                <div className="flex items-center gap-3 px-4 py-2 bg-emerald-900/50 rounded-full border border-emerald-500/50">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
@@ -262,13 +253,13 @@ export default function App() {
                 </div>
              )}
              {status === 'Cooldown' && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 rounded-full border border-amber-500/20">
+                <div className="flex items-center gap-3 px-4 py-2 bg-amber-900/50 rounded-full border border-amber-500/50">
                     <Clock size={16} className="text-amber-500 animate-spin-slow" />
                     <span className="text-amber-500 font-bold uppercase tracking-wide text-sm">Wait (5s)</span>
                 </div>
              )}
              {status === 'Triggered' && (
-                <div className="flex items-center gap-3 px-6 py-3 bg-red-500 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-bounce">
+                <div className="flex items-center gap-3 px-6 py-3 bg-red-600 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-bounce">
                     <AlertCircle size={24} className="text-white" />
                     <span className="text-white font-black uppercase tracking-wide text-lg">DONE!</span>
                 </div>
@@ -277,16 +268,11 @@ export default function App() {
 
          {/* MAIN VISUALIZER */}
          <div className="relative w-72 h-72 flex items-center justify-center">
-            
-            {/* 1. Base Track */}
+            {/* Base Track */}
             <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
-               <circle 
-                 cx="50%" cy="50%" r="48%" 
-                 fill="none" stroke="#27272a" strokeWidth="20" strokeLinecap="round" 
-               />
+               <circle cx="50%" cy="50%" r="48%" fill="none" stroke="#27272a" strokeWidth="20" strokeLinecap="round" />
             </svg>
-
-            {/* 2. Volume Meter (Dynamic Orange Ring) */}
+            {/* Volume Meter */}
             <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
                <circle 
                   cx="50%" cy="50%" r="48%" 
@@ -300,20 +286,17 @@ export default function App() {
                   style={{ opacity: isListening ? 1 : 0.3 }}
                />
             </svg>
-
-            {/* 3. Threshold Marker (Little notch to hit) */}
+            {/* Threshold Marker */}
             <div 
                 className="absolute inset-0 pointer-events-none transition-all duration-300"
                 style={{ transform: `rotate(${( (100-sensitivity)/100 * 360 )}deg)` }}
             >
-                {/* Visual marker at the top (start) rotated by threshold */}
                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1 w-1 h-6 bg-white z-20 shadow-[0_0_5px_black]" />
             </div>
-
-            {/* 4. Center Counter */}
+            {/* Center Counter */}
             <div className="flex flex-col items-center z-10">
                 <span className="text-gray-500 font-bold text-sm uppercase tracking-widest">Count</span>
-                <span className="text-[7rem] font-bold leading-none tracking-tighter tabular-nums">
+                <span className="text-[7rem] font-bold leading-none tracking-tighter tabular-nums text-white">
                     {whistleCount}
                 </span>
                 <div className="px-3 py-1 rounded-full mt-2" style={{ backgroundColor: '#27272a' }}>
@@ -330,10 +313,9 @@ export default function App() {
                  </p>
              )}
          </div>
-
       </main>
 
-      {/* --- Footer: Huge Action Button --- */}
+      {/* --- Footer --- */}
       <footer className="p-6 border-t border-white/10 shrink-0 safe-area-bottom" style={{ backgroundColor: '#000000' }}>
          {!isListening ? (
              <button 
@@ -362,21 +344,34 @@ export default function App() {
          )}
       </footer>
 
-      {/* --- Settings Sheet (Full Overlay) --- */}
+      {/* --- Settings Sheet (NUCLEAR PROOF CSS) --- */}
       {showSettings && (
         <div 
-            className="fixed inset-0 z-[100] flex flex-col animate-in slide-in-from-bottom-full duration-300"
-            style={{ backgroundColor: '#000000' }}
+            style={{ 
+                position: 'fixed', 
+                top: 0, 
+                left: 0, 
+                width: '100%', 
+                height: '100%', 
+                backgroundColor: '#000000', 
+                zIndex: 9999,
+                display: 'flex',
+                flexDirection: 'column'
+            }}
         >
             {/* Header */}
             <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 shrink-0" style={{ backgroundColor: '#000000' }}>
                 <h2 className="text-xl font-bold text-white">Settings</h2>
-                <button onClick={() => setShowSettings(false)} className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10" style={{ backgroundColor: '#18181b' }}>
+                <button 
+                    onClick={() => setShowSettings(false)} 
+                    className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10"
+                    style={{ backgroundColor: '#18181b', color: 'white' }}
+                >
                     <X size={24} />
                 </button>
             </div>
 
-            {/* Scrollable Content */}
+            {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8" style={{ backgroundColor: '#000000' }}>
                 
                 {/* Target Section */}
@@ -390,7 +385,7 @@ export default function App() {
                                 className={`h-14 rounded-xl font-bold text-lg transition-all border-2 ${
                                     targetWhistles === num 
                                     ? 'bg-orange-500 border-orange-500 text-black' 
-                                    : 'border-gray-800 text-gray-400 hover:bg-gray-800'
+                                    : 'border-gray-800 text-gray-400'
                                 }`}
                                 style={targetWhistles !== num ? { backgroundColor: '#18181b' } : {}}
                             >
@@ -419,10 +414,6 @@ export default function App() {
                         className="w-full h-4 rounded-lg appearance-none cursor-pointer accent-orange-500"
                         style={{ backgroundColor: '#27272a' }}
                     />
-                    <div className="flex justify-between text-xs text-gray-500 mt-2 font-bold uppercase">
-                        <span>Hard to Trigger</span>
-                        <span>Easy to Trigger</span>
-                    </div>
                 </section>
 
                 {/* Duration Section */}
@@ -454,7 +445,7 @@ export default function App() {
                             <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-gray-600"} />
                             <input 
                                 type="text" 
-                                placeholder="Alexa Webhook URL (CallMeBot / NotifyMe)"
+                                placeholder="Alexa Webhook URL"
                                 value={alexaUrl} 
                                 onChange={(e) => setAlexaUrl(e.target.value)}
                                 className="flex-1 bg-transparent text-gray-200 placeholder-gray-600 focus:outline-none h-full"
