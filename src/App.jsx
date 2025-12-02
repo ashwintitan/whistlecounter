@@ -222,18 +222,12 @@ export default function App() {
   const volumePercent = Math.min(volumeLevel, 100) / 100;
   const volumeDash = volumePercent * CIRCUMFERENCE;
 
-  // Threshold Marker Rotation
-  const thresholdPercent = (100 - sensitivity) / 100;
-  // Map 0-1 to rotation degrees (assuming circle starts at -90)
-  // But for simple visualizer, we might just mark the threshold on a bar. 
-  // Let's stick to the cleaner concentric circle approach.
-
   return (
     // MAIN CONTAINER: Fixed viewport height, no scroll, no touch actions
-    <div className="h-[100dvh] w-full bg-neutral-950 text-white font-sans flex flex-col overflow-hidden touch-none select-none relative">
+    <div className="h-[100dvh] w-full bg-zinc-950 text-white font-sans flex flex-col overflow-hidden touch-none select-none relative">
       
       {/* --- Header: Minimal & Functional --- */}
-      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/5">
+      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/5 bg-zinc-950 z-10">
          <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-black">
                 <Mic size={20} strokeWidth={3} />
@@ -242,9 +236,9 @@ export default function App() {
          </div>
          <button 
             onClick={() => setShowSettings(true)}
-            className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+            className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center active:scale-95 transition-transform hover:bg-zinc-700"
          >
-            <Settings size={22} className="text-neutral-300" />
+            <Settings size={22} className="text-zinc-300" />
          </button>
       </header>
 
@@ -253,7 +247,7 @@ export default function App() {
          
          {/* STATUS INDICATOR (Large & Clear) */}
          <div className="flex flex-col items-center gap-2 h-16 justify-end">
-             {status === 'Ready' && <span className="text-neutral-400 text-xl font-medium">Ready to start</span>}
+             {status === 'Ready' && <span className="text-zinc-400 text-xl font-medium">Ready to start</span>}
              {status === 'Listening' && (
                 <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
                     <span className="relative flex h-3 w-3">
@@ -284,7 +278,7 @@ export default function App() {
             <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
                <circle 
                  cx="50%" cy="50%" r="48%" 
-                 fill="none" stroke="#262626" strokeWidth="20" strokeLinecap="round" 
+                 fill="none" stroke="#27272a" strokeWidth="20" strokeLinecap="round" 
                />
             </svg>
 
@@ -314,12 +308,12 @@ export default function App() {
 
             {/* 4. Center Counter */}
             <div className="flex flex-col items-center z-10">
-                <span className="text-neutral-500 font-bold text-sm uppercase tracking-widest">Count</span>
+                <span className="text-zinc-500 font-bold text-sm uppercase tracking-widest">Count</span>
                 <span className="text-[7rem] font-bold leading-none tracking-tighter tabular-nums">
                     {whistleCount}
                 </span>
-                <div className="bg-neutral-800 px-3 py-1 rounded-full mt-2">
-                    <span className="text-neutral-400 font-semibold text-sm">Target: <span className="text-white">{targetWhistles}</span></span>
+                <div className="bg-zinc-800 px-3 py-1 rounded-full mt-2">
+                    <span className="text-zinc-400 font-semibold text-sm">Target: <span className="text-white">{targetWhistles}</span></span>
                 </div>
             </div>
          </div>
@@ -327,7 +321,7 @@ export default function App() {
          {/* Instruction / Helper Text */}
          <div className="h-8 text-center px-4">
              {isListening && volumeLevel > 5 && (
-                 <p className="text-xs text-neutral-500 font-mono">
+                 <p className="text-xs text-zinc-500 font-mono">
                      Loudness: {Math.round(volumeLevel)}% / Req: {100-sensitivity}%
                  </p>
              )}
@@ -336,7 +330,7 @@ export default function App() {
       </main>
 
       {/* --- Footer: Huge Action Button --- */}
-      <footer className="p-6 bg-neutral-900 border-t border-white/5 shrink-0 safe-area-bottom">
+      <footer className="p-6 bg-zinc-900 border-t border-white/5 shrink-0 safe-area-bottom">
          {!isListening ? (
              <button 
                 onClick={startListening}
@@ -348,13 +342,13 @@ export default function App() {
              <div className="flex gap-4">
                 <button 
                     onClick={stopListening}
-                    className="flex-1 h-20 bg-neutral-800 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-xl border border-white/10 active:scale-[0.98] transition-all"
+                    className="flex-1 h-20 bg-zinc-800 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-xl border border-white/10 active:scale-[0.98] transition-all hover:bg-zinc-700"
                 >
                     <Square fill="currentColor" size={24} /> STOP
                 </button>
                 <button 
                     onClick={resetApp}
-                    className="w-20 h-20 bg-neutral-800 rounded-2xl flex items-center justify-center text-neutral-400 border border-white/10 active:scale-[0.98] transition-all"
+                    className="w-20 h-20 bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 border border-white/10 active:scale-[0.98] transition-all hover:bg-zinc-700 hover:text-white"
                 >
                     <RefreshCw size={28} />
                 </button>
@@ -364,11 +358,11 @@ export default function App() {
 
       {/* --- Settings Sheet (Full Overlay) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-neutral-950 flex flex-col animate-in slide-in-from-bottom-full duration-300">
+        <div className="fixed inset-0 z-50 bg-zinc-950 flex flex-col animate-in slide-in-from-bottom-full duration-300">
             {/* Header */}
-            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 bg-neutral-900 shrink-0">
-                <h2 className="text-xl font-bold">Settings</h2>
-                <button onClick={() => setShowSettings(false)} className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center">
+            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 bg-zinc-900 shrink-0">
+                <h2 className="text-xl font-bold text-white">Settings</h2>
+                <button onClick={() => setShowSettings(false)} className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center hover:bg-zinc-700">
                     <X size={24} />
                 </button>
             </div>
@@ -378,7 +372,7 @@ export default function App() {
                 
                 {/* Target Section */}
                 <section>
-                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-wider mb-4 block">Target Whistles</label>
+                    <label className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-4 block">Target Whistles</label>
                     <div className="grid grid-cols-4 gap-3">
                         {[1, 2, 3, 4, 5, 6, 8, 10].map(num => (
                             <button 
@@ -387,7 +381,7 @@ export default function App() {
                                 className={`h-14 rounded-xl font-bold text-lg transition-all border-2 ${
                                     targetWhistles === num 
                                     ? 'bg-orange-500 border-orange-500 text-black' 
-                                    : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
                                 }`}
                             >
                                 {num}
@@ -397,13 +391,13 @@ export default function App() {
                 </section>
 
                 {/* Sensitivity Section */}
-                <section className="bg-neutral-900 p-5 rounded-2xl border border-white/5">
+                <section className="bg-zinc-900 p-5 rounded-2xl border border-white/5">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500"><Volume2 size={24} /></div>
                             <div>
                                 <h3 className="font-bold text-lg">Mic Sensitivity</h3>
-                                <p className="text-xs text-neutral-500">Adjust if whistles are missed</p>
+                                <p className="text-xs text-zinc-500">Adjust if whistles are missed</p>
                             </div>
                         </div>
                         <span className="font-mono text-xl font-bold text-orange-500">{sensitivity}%</span>
@@ -412,22 +406,22 @@ export default function App() {
                         type="range" min="1" max="95" 
                         value={sensitivity} 
                         onChange={(e) => setSensitivity(Number(e.target.value))}
-                        className="w-full h-4 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        className="w-full h-4 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
                     />
-                    <div className="flex justify-between text-xs text-neutral-500 mt-2 font-bold uppercase">
+                    <div className="flex justify-between text-xs text-zinc-500 mt-2 font-bold uppercase">
                         <span>Hard to Trigger</span>
                         <span>Easy to Trigger</span>
                     </div>
                 </section>
 
                 {/* Duration Section */}
-                <section className="bg-neutral-900 p-5 rounded-2xl border border-white/5">
+                <section className="bg-zinc-900 p-5 rounded-2xl border border-white/5">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Clock size={24} /></div>
                             <div>
                                 <h3 className="font-bold text-lg">Min Duration</h3>
-                                <p className="text-xs text-neutral-500">Ignore short noises</p>
+                                <p className="text-xs text-zinc-500">Ignore short noises</p>
                             </div>
                         </div>
                         <span className="font-mono text-xl font-bold text-blue-500">{minDuration}s</span>
@@ -436,32 +430,32 @@ export default function App() {
                         type="range" min="0.5" max="5.0" step="0.5"
                         value={minDuration} 
                         onChange={(e) => setMinDuration(Number(e.target.value))}
-                        className="w-full h-4 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="w-full h-4 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
                 </section>
 
                 {/* Automation Section */}
                 <section>
-                    <label className="text-sm font-bold text-neutral-500 uppercase tracking-wider mb-4 block">Automations</label>
+                    <label className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-4 block">Automations</label>
                     <div className="space-y-3">
-                        <div className="flex items-center gap-3 bg-neutral-900 p-4 rounded-xl border border-white/5">
-                            <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-neutral-600"} />
+                        <div className="flex items-center gap-3 bg-zinc-900 p-4 rounded-xl border border-white/5">
+                            <Wifi size={20} className={alexaUrl ? "text-cyan-400" : "text-zinc-600"} />
                             <input 
                                 type="text" 
                                 placeholder="Alexa Webhook URL (CallMeBot / NotifyMe)"
                                 value={alexaUrl} 
                                 onChange={(e) => setAlexaUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 focus:outline-none h-full"
+                                className="flex-1 bg-transparent text-zinc-200 placeholder-zinc-600 focus:outline-none h-full"
                             />
                         </div>
-                         <div className="flex items-center gap-3 bg-neutral-900 p-4 rounded-xl border border-white/5">
-                            <MessageCircle size={20} className={whatsappUrl ? "text-green-400" : "text-neutral-600"} />
+                         <div className="flex items-center gap-3 bg-zinc-900 p-4 rounded-xl border border-white/5">
+                            <MessageCircle size={20} className={whatsappUrl ? "text-green-400" : "text-zinc-600"} />
                             <input 
                                 type="text" 
                                 placeholder="Paste WhatsApp URL"
                                 value={whatsappUrl} 
                                 onChange={(e) => setWhatsappUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 focus:outline-none h-full"
+                                className="flex-1 bg-transparent text-zinc-200 placeholder-zinc-600 focus:outline-none h-full"
                             />
                         </div>
                     </div>
