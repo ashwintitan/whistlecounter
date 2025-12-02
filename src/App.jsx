@@ -116,17 +116,22 @@ export default function App() {
     }
     
     // Normalize 0-255 to 0-100
-    const normalizedVolume = (maxVal / 255) * 100;
-    setVolumeLevel(normalizedVolume);
+    // We add a BOOST_FACTOR because raw audio (no auto-gain) is naturally very quiet.
+    // This multiplies the signal so you can actually see it on the bar.
+    const BOOST_FACTOR = 3; 
+    const rawPercentage = (maxVal / 255) * 100;
+    const boostedVolume = Math.min(rawPercentage * BOOST_FACTOR, 100);
+    
+    setVolumeLevel(boostedVolume);
 
     // Sensitivity Calculation
-    // If sensitivity is 50, threshold is ~150 (out of 255)
-    // If sensitivity is 90, threshold is ~45 (very sensitive)
+    // If sensitivity is 50, threshold is 50.
+    // If sensitivity is 90, threshold is 10 (triggers very easily).
     const threshold = 100 - sensitivity; 
 
     const now = Date.now();
     
-    if (normalizedVolume > threshold) {
+    if (boostedVolume > threshold) {
       if (status === 'Listening' && (now - lastWhistleTime > COOLDOWN_MS)) {
         handleWhistleDetected();
       }
@@ -254,9 +259,12 @@ export default function App() {
                 style={{ left: `${100 - sensitivity}%` }}
             />
         </div>
-        <div className="flex justify-between text-xs text-slate-500 mb-8 -mt-6 px-1">
+        <div className="flex justify-between text-xs text-slate-500 mb-8 -mt-6 px-1 font-mono">
             <span>Quiet</span>
-            <span>Trigger Threshold</span>
+            {/* DEBUG DISPLAY: Shows exact numbers */}
+            <span className={`font-bold transition-colors ${volumeLevel > (100-sensitivity) ? 'text-green-400' : 'text-slate-400'}`}>
+                Current: {Math.round(volumeLevel)} | Trigger: {100 - sensitivity}
+            </span>
             <span>Loud</span>
         </div>
 
