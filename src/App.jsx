@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Activity, Zap, Radio } from 'lucide-react';
+import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Activity, Zap, Radio, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [isListening, setIsListening] = useState(false);
@@ -43,30 +43,38 @@ export default function App() {
 
   // Load/Save Settings
   useEffect(() => {
-    const savedAlexa = localStorage.getItem('alexaUrl');
-    const savedWhatsapp = localStorage.getItem('whatsappUrl');
-    const savedTarget = localStorage.getItem('targetWhistles');
-    const savedDuration = localStorage.getItem('minDuration');
-    
-    if (savedAlexa) setAlexaUrl(savedAlexa);
-    if (savedWhatsapp) setWhatsappUrl(savedWhatsapp);
-    if (savedTarget) {
-        setTargetWhistles(parseInt(savedTarget));
-        targetWhistlesRef.current = parseInt(savedTarget);
-    }
-    if (savedDuration) {
-        setMinDuration(parseFloat(savedDuration));
-        minDurationRef.current = parseFloat(savedDuration);
+    try {
+        const savedAlexa = localStorage.getItem('alexaUrl');
+        const savedWhatsapp = localStorage.getItem('whatsappUrl');
+        const savedTarget = localStorage.getItem('targetWhistles');
+        const savedDuration = localStorage.getItem('minDuration');
+        
+        if (savedAlexa) setAlexaUrl(savedAlexa);
+        if (savedWhatsapp) setWhatsappUrl(savedWhatsapp);
+        if (savedTarget) {
+            setTargetWhistles(parseInt(savedTarget));
+            targetWhistlesRef.current = parseInt(savedTarget);
+        }
+        if (savedDuration) {
+            setMinDuration(parseFloat(savedDuration));
+            minDurationRef.current = parseFloat(savedDuration);
+        }
+    } catch (e) {
+        console.warn("Storage access failed", e);
     }
 
     return () => stopListening();
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('alexaUrl', alexaUrl);
-    localStorage.setItem('whatsappUrl', whatsappUrl);
-    localStorage.setItem('targetWhistles', targetWhistles);
-    localStorage.setItem('minDuration', minDuration);
+    try {
+        localStorage.setItem('alexaUrl', alexaUrl);
+        localStorage.setItem('whatsappUrl', whatsappUrl);
+        localStorage.setItem('targetWhistles', targetWhistles);
+        localStorage.setItem('minDuration', minDuration);
+    } catch (e) {
+        // Ignore storage errors
+    }
   }, [alexaUrl, whatsappUrl, targetWhistles, minDuration]);
 
   // Trigger Logic
@@ -79,37 +87,72 @@ export default function App() {
   const startListening = async () => {
     try {
       setErrorMessage('');
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
-      });
+      
+      // Safety check for browser support
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Microphone not supported on this browser.");
+      }
+
+      // 1. Initialize Audio Context (Must happen inside user gesture)
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      
+      // Resume if suspended (common on mobile)
+      if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+      }
+      
+      audioContextRef.current = audioContext;
+
+      // 2. Request Microphone (Simplified constraints to prevent OverconstrainedError)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      audioContextRef.current = audioContext;
+      // 3. Setup Analyzer
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8; // Smooths out the visualizer
       analyserRef.current = analyser;
+      
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
       sourceRef.current = source;
 
+      // 4. Reset Logic
       loudFramesRef.current = 0;
       lastWhistleTimeRef.current = Date.now();
       
       setIsListening(true);
       setStatus('Listening');
       statusRef.current = 'Listening';
+      
+      // 5. Start Loop
       analyzeAudio();
+
     } catch (err) {
-      console.error(err);
-      setErrorMessage('Mic Access Denied. Check Permissions.');
+      console.error("Mic Error:", err);
+      // specific error handling for common mobile issues
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setErrorMessage('Microphone permission denied. Please enable it in settings.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setErrorMessage('No microphone found.');
+      } else {
+          setErrorMessage(`Error: ${err.message || 'Could not start audio.'}`);
+      }
+      stopListening();
     }
   };
 
   const stopListening = () => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
-    if (audioContextRef.current) audioContextRef.current.close();
+    
+    if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(e => console.log(e));
+    }
     
     setIsListening(false);
     setStatus('Ready');
@@ -120,32 +163,48 @@ export default function App() {
 
   const analyzeAudio = () => {
     if (!analyserRef.current) return;
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-
-    let sum = 0;
-    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
-    const rms = Math.sqrt(sum / dataArray.length);
-    const normalizedVolume = Math.min((rms / 255) * 100 * 2.5, 100); // Slightly boosted for UI response
     
-    setVolumeLevel(normalizedVolume);
+    try {
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
 
-    const threshold = 100 - sensitivityRef.current; 
-    const now = Date.now();
-    
-    if (normalizedVolume > threshold) {
-      loudFramesRef.current += 1;
-    } else {
-      loudFramesRef.current = Math.max(0, loudFramesRef.current - 1);
+        // Calculate Volume (RMS)
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i] * dataArray[i];
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        
+        // Normalize 0-100 with a slight boost curve
+        const normalizedVolume = Math.min((rms / 255) * 100 * 2.5, 100);
+        
+        // Use functional state update to prevent stale closure issues, but we used ref for logic so it's fine
+        // Update UI state (throttled by RAF naturally)
+        setVolumeLevel(normalizedVolume);
+
+        // LOGIC CHECK
+        const threshold = 100 - sensitivityRef.current; 
+        const now = Date.now();
+        
+        // "Leaky Bucket" Algorithm for cleaner detection
+        if (normalizedVolume > threshold) {
+            loudFramesRef.current += 1;
+        } else {
+            // Decay count slowly instead of hard reset
+            loudFramesRef.current = Math.max(0, loudFramesRef.current - 1);
+        }
+
+        const requiredFrames = minDurationRef.current * 60; // approx 60fps
+
+        if (statusRef.current === 'Listening' && (now - lastWhistleTimeRef.current > COOLDOWN_MS)) {
+            if (loudFramesRef.current > requiredFrames) {
+                handleWhistleDetected();
+            }
+        }
+    } catch (e) {
+        console.error("Audio loop error", e);
     }
 
-    const requiredFrames = minDurationRef.current * 60;
-
-    if (statusRef.current === 'Listening' && (now - lastWhistleTimeRef.current > COOLDOWN_MS)) {
-       if (loudFramesRef.current > requiredFrames) {
-          handleWhistleDetected();
-       }
-    }
     animationRef.current = requestAnimationFrame(analyzeAudio);
   };
 
@@ -156,9 +215,13 @@ export default function App() {
     setStatus('Cooldown');
     setWhistleCount(prev => prev + 1);
     
-    const beep = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3');
-    beep.volume = 1.0;
-    beep.play().catch(e => console.log(e));
+    try {
+        const beep = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3');
+        beep.volume = 1.0;
+        beep.play().catch(e => console.log("Audio play error", e));
+    } catch (e) {
+        console.log("Audio constructor error", e);
+    }
 
     setTimeout(() => {
         if (whistleCountRef.current < targetWhistlesRef.current) {
@@ -171,14 +234,27 @@ export default function App() {
     setStatus('Triggered');
     stopListening();
 
-    const alarm = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3');
-    alarm.loop = true;
-    alarm.play().catch(e => console.log(e));
-    setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 10000);
+    try {
+        const alarm = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3');
+        alarm.loop = true;
+        alarm.play().catch(e => console.log("Alarm play error", e));
+        setTimeout(() => { 
+            alarm.pause(); 
+            alarm.currentTime = 0; 
+        }, 10000);
+    } catch (e) {
+        console.log("Alarm error", e);
+    }
 
     let notifications = [];
-    if (alexaUrl) notifications.push(fetch(alexaUrl, { method: 'GET', mode: 'no-cors' }));
-    if (whatsappUrl) notifications.push(fetch(whatsappUrl, { method: 'GET', mode: 'no-cors' }));
+    
+    if (alexaUrl) {
+      notifications.push(fetch(alexaUrl, { method: 'GET', mode: 'no-cors' }).catch(e => console.log("Webhook fail", e)));
+    }
+    
+    if (whatsappUrl) {
+      notifications.push(fetch(whatsappUrl, { method: 'GET', mode: 'no-cors' }).catch(e => console.log("Webhook fail", e)));
+    }
 
     if (notifications.length > 0) {
         await Promise.all(notifications);
@@ -464,7 +540,7 @@ export default function App() {
       {/* Error Toast */}
       {errorMessage && (
         <div className="fixed top-20 left-4 right-4 bg-rose-500/10 border border-rose-500/50 text-rose-200 p-4 rounded backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-5 z-50">
-            <AlertCircle size={20} />
+            <AlertTriangle size={20} />
             <span className="font-mono text-xs">{errorMessage}</span>
         </div>
       )}
