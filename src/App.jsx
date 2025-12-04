@@ -372,31 +372,31 @@ export default function App() {
 
       </div>
 
-      {/* --- Settings Overlay (Clean & Centered) --- */}
+      {/* --- Settings Overlay (Modern & Clean) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-24 px-6 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm bg-[#556B2F] border border-[#6B8E23] rounded-3xl p-8 space-y-8 shadow-2xl text-[#FEFEE9]">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-20 px-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-zinc-900/90 border border-zinc-800/50 rounded-2xl p-6 space-y-6 shadow-xl backdrop-blur-md">
                 
                 {/* Header */}
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold tracking-wide">Settings</h2>
-                    <button onClick={() => setShowSettings(false)} className="p-2 bg-[#4A5D29] rounded-full hover:bg-[#3E4E22] transition-colors">
-                        <X size={20} />
+                <div className="flex justify-between items-center pb-4 border-b border-zinc-800/50">
+                    <h2 className="text-base font-semibold text-white tracking-wide">Settings</h2>
+                    <button onClick={() => setShowSettings(false)} className="p-1.5 bg-zinc-800/50 rounded-full hover:bg-zinc-700/50 text-zinc-400 hover:text-white transition-colors">
+                        <X size={16} />
                     </button>
                 </div>
 
                 {/* Target */}
-                <div>
-                    <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest mb-4 block">Target</label>
+                <div className="space-y-3">
+                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Target Whistles</label>
                     <div className="flex justify-between gap-2">
                         {[1, 2, 3, 4, 5].map(num => (
                             <button 
                                 key={num}
                                 onClick={() => setTargetWhistles(num)}
-                                className={`w-10 h-12 rounded-lg font-bold text-lg transition-all border border-[#6B8E23] ${
+                                className={`flex-1 h-10 rounded-md font-semibold text-sm transition-all border ${
                                     targetWhistles === num 
-                                    ? 'bg-[#FEFEE9] text-[#556B2F] shadow-md' 
-                                    : 'bg-[#4A5D29] text-[#D0D9CD] hover:bg-[#3E4E22]'
+                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                                    : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800'
                                 }`}
                             >
                                 {num}
@@ -404,56 +404,56 @@ export default function App() {
                         ))}
                          <button 
                                 onClick={() => setTargetWhistles(Math.min(targetWhistles + 1, 20))}
-                                className="w-10 h-12 rounded-lg bg-[#4A5D29] text-[#D0D9CD] font-bold border border-[#6B8E23] hover:bg-[#3E4E22]"
+                                className="flex-1 h-10 rounded-md bg-zinc-800/50 text-zinc-400 font-semibold text-sm border border-zinc-700/50 hover:bg-zinc-800"
                             >+</button>
                     </div>
                 </div>
 
                 {/* Sliders */}
-                <div className="space-y-6">
-                    <div>
-                        <div className="flex justify-between mb-2">
-                            <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest">Sensitivity</label>
-                            <span className="text-xs text-[#FEFEE9] font-mono">{sensitivity}%</span>
+                <div className="space-y-5">
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Sensitivity</label>
+                            <span className="text-xs text-zinc-300 font-mono">{sensitivity}%</span>
                         </div>
                         <input 
                             type="range" min="1" max="95" 
                             value={sensitivity} 
                             onChange={(e) => setSensitivity(Number(e.target.value))}
-                            className="w-full h-1 bg-[#4A5D29] rounded-lg appearance-none cursor-pointer accent-[#FEFEE9]"
+                            className="w-full h-1.5 bg-zinc-800 rounded-full appearance-none cursor-pointer accent-emerald-400"
                         />
                     </div>
-                    <div>
-                        <div className="flex justify-between mb-2">
-                            <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest">Duration</label>
-                            <span className="text-xs text-[#FEFEE9] font-mono">{minDuration}s</span>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Min Duration</label>
+                            <span className="text-xs text-zinc-300 font-mono">{minDuration}s</span>
                         </div>
                         <input 
                             type="range" min="0.5" max="5.0" step="0.5"
                             value={minDuration} 
                             onChange={(e) => setMinDuration(Number(e.target.value))}
-                            className="w-full h-1 bg-[#4A5D29] rounded-lg appearance-none cursor-pointer accent-[#FEFEE9]"
+                            className="w-full h-1.5 bg-zinc-800 rounded-full appearance-none cursor-pointer accent-emerald-400"
                         />
                     </div>
                 </div>
 
                 {/* Webhooks */}
-                <div>
-                    <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest mb-4 block">Connections</label>
-                    <div className="space-y-3">
+                <div className="space-y-3">
+                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Connections</label>
+                    <div className="space-y-2">
                         <input 
                             type="text" 
-                            placeholder="Alexa URL"
+                            placeholder="Alexa Webhook URL"
                             value={alexaUrl} 
                             onChange={(e) => setAlexaUrl(e.target.value)}
-                            className="w-full bg-[#4A5D29] border border-[#6B8E23] rounded-xl px-4 py-3 text-sm text-[#FEFEE9] placeholder-[#8F9C7A] focus:ring-1 focus:ring-[#FEFEE9] outline-none"
+                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-emerald-500/50 focus:ring-0 focus:bg-zinc-800 outline-none transition-colors"
                         />
                         <input 
                             type="text" 
-                            placeholder="WhatsApp URL"
+                            placeholder="WhatsApp API URL"
                             value={whatsappUrl} 
                             onChange={(e) => setWhatsappUrl(e.target.value)}
-                            className="w-full bg-[#4A5D29] border border-[#6B8E23] rounded-xl px-4 py-3 text-sm text-[#FEFEE9] placeholder-[#8F9C7A] focus:ring-1 focus:ring-[#FEFEE9] outline-none"
+                            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-emerald-500/50 focus:ring-0 focus:bg-zinc-800 outline-none transition-colors"
                         />
                     </div>
                 </div>
