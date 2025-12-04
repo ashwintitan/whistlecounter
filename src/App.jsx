@@ -374,29 +374,29 @@ export default function App() {
 
       {/* --- Settings Overlay (Clean & Centered) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm bg-zinc-900/50 border border-white/10 rounded-3xl p-8 space-y-8">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-24 px-6 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-[#556B2F] border border-[#6B8E23] rounded-3xl p-8 space-y-8 shadow-2xl text-[#FEFEE9]">
                 
                 {/* Header */}
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white tracking-wide">Settings</h2>
-                    <button onClick={() => setShowSettings(false)} className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 text-white">
+                    <h2 className="text-xl font-bold tracking-wide">Settings</h2>
+                    <button onClick={() => setShowSettings(false)} className="p-2 bg-[#4A5D29] rounded-full hover:bg-[#3E4E22] transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Target */}
                 <div>
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 block">Target</label>
+                    <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest mb-4 block">Target</label>
                     <div className="flex justify-between gap-2">
                         {[1, 2, 3, 4, 5].map(num => (
                             <button 
                                 key={num}
                                 onClick={() => setTargetWhistles(num)}
-                                className={`w-10 h-12 rounded-lg font-bold text-lg transition-all ${
+                                className={`w-10 h-12 rounded-lg font-bold text-lg transition-all border border-[#6B8E23] ${
                                     targetWhistles === num 
-                                    ? 'bg-white text-black' 
-                                    : 'bg-zinc-800 text-zinc-500'
+                                    ? 'bg-[#FEFEE9] text-[#556B2F] shadow-md' 
+                                    : 'bg-[#4A5D29] text-[#D0D9CD] hover:bg-[#3E4E22]'
                                 }`}
                             >
                                 {num}
@@ -404,7 +404,7 @@ export default function App() {
                         ))}
                          <button 
                                 onClick={() => setTargetWhistles(Math.min(targetWhistles + 1, 20))}
-                                className="w-10 h-12 rounded-lg bg-zinc-800 text-zinc-500 font-bold"
+                                className="w-10 h-12 rounded-lg bg-[#4A5D29] text-[#D0D9CD] font-bold border border-[#6B8E23] hover:bg-[#3E4E22]"
                             >+</button>
                     </div>
                 </div>
@@ -413,47 +413,47 @@ export default function App() {
                 <div className="space-y-6">
                     <div>
                         <div className="flex justify-between mb-2">
-                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Sensitivity</label>
-                            <span className="text-xs text-white font-mono">{sensitivity}%</span>
+                            <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest">Sensitivity</label>
+                            <span className="text-xs text-[#FEFEE9] font-mono">{sensitivity}%</span>
                         </div>
                         <input 
                             type="range" min="1" max="95" 
                             value={sensitivity} 
                             onChange={(e) => setSensitivity(Number(e.target.value))}
-                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                            className="w-full h-1 bg-[#4A5D29] rounded-lg appearance-none cursor-pointer accent-[#FEFEE9]"
                         />
                     </div>
                     <div>
                         <div className="flex justify-between mb-2">
-                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Duration</label>
-                            <span className="text-xs text-white font-mono">{minDuration}s</span>
+                            <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest">Duration</label>
+                            <span className="text-xs text-[#FEFEE9] font-mono">{minDuration}s</span>
                         </div>
                         <input 
                             type="range" min="0.5" max="5.0" step="0.5"
                             value={minDuration} 
                             onChange={(e) => setMinDuration(Number(e.target.value))}
-                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                            className="w-full h-1 bg-[#4A5D29] rounded-lg appearance-none cursor-pointer accent-[#FEFEE9]"
                         />
                     </div>
                 </div>
 
                 {/* Webhooks */}
                 <div>
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 block">Connections</label>
+                    <label className="text-xs font-bold text-[#D0D9CD] uppercase tracking-widest mb-4 block">Connections</label>
                     <div className="space-y-3">
                         <input 
                             type="text" 
                             placeholder="Alexa URL"
                             value={alexaUrl} 
                             onChange={(e) => setAlexaUrl(e.target.value)}
-                            className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:ring-1 focus:ring-white outline-none"
+                            className="w-full bg-[#4A5D29] border border-[#6B8E23] rounded-xl px-4 py-3 text-sm text-[#FEFEE9] placeholder-[#8F9C7A] focus:ring-1 focus:ring-[#FEFEE9] outline-none"
                         />
                         <input 
                             type="text" 
                             placeholder="WhatsApp URL"
                             value={whatsappUrl} 
                             onChange={(e) => setWhatsappUrl(e.target.value)}
-                            className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:ring-1 focus:ring-white outline-none"
+                            className="w-full bg-[#4A5D29] border border-[#6B8E23] rounded-xl px-4 py-3 text-sm text-[#FEFEE9] placeholder-[#8F9C7A] focus:ring-1 focus:ring-[#FEFEE9] outline-none"
                         />
                     </div>
                 </div>
