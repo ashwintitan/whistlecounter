@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Activity, Zap, Radio, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Mic, Settings, Play, Square, X, Wifi, MessageCircle, Clock, Volume2, Activity, Zap, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [isListening, setIsListening] = useState(false);
@@ -88,37 +88,31 @@ export default function App() {
     try {
       setErrorMessage('');
       
-      // Safety check for browser support
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error("Microphone not supported on this browser.");
       }
 
-      // 1. Initialize Audio Context (Must happen inside user gesture)
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       const audioContext = new AudioContextClass();
       
-      // Resume if suspended (common on mobile)
       if (audioContext.state === 'suspended') {
           await audioContext.resume();
       }
       
       audioContextRef.current = audioContext;
 
-      // 2. Request Microphone (Simplified constraints to prevent OverconstrainedError)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      // 3. Setup Analyzer
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8; // Smooths out the visualizer
+      analyser.smoothingTimeConstant = 0.8; 
       analyserRef.current = analyser;
       
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
       sourceRef.current = source;
 
-      // 4. Reset Logic
       loudFramesRef.current = 0;
       lastWhistleTimeRef.current = Date.now();
       
@@ -126,12 +120,10 @@ export default function App() {
       setStatus('Listening');
       statusRef.current = 'Listening';
       
-      // 5. Start Loop
       analyzeAudio();
 
     } catch (err) {
       console.error("Mic Error:", err);
-      // specific error handling for common mobile issues
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setErrorMessage('Microphone permission denied. Please enable it in settings.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
@@ -168,33 +160,25 @@ export default function App() {
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(dataArray);
 
-        // Calculate Volume (RMS)
         let sum = 0;
         for (let i = 0; i < dataArray.length; i++) {
             sum += dataArray[i] * dataArray[i];
         }
         const rms = Math.sqrt(sum / dataArray.length);
-        
-        // Normalize 0-100 with a slight boost curve
         const normalizedVolume = Math.min((rms / 255) * 100 * 2.5, 100);
         
-        // Use functional state update to prevent stale closure issues, but we used ref for logic so it's fine
-        // Update UI state (throttled by RAF naturally)
         setVolumeLevel(normalizedVolume);
 
-        // LOGIC CHECK
         const threshold = 100 - sensitivityRef.current; 
         const now = Date.now();
         
-        // "Leaky Bucket" Algorithm for cleaner detection
         if (normalizedVolume > threshold) {
             loudFramesRef.current += 1;
         } else {
-            // Decay count slowly instead of hard reset
             loudFramesRef.current = Math.max(0, loudFramesRef.current - 1);
         }
 
-        const requiredFrames = minDurationRef.current * 60; // approx 60fps
+        const requiredFrames = minDurationRef.current * 60; 
 
         if (statusRef.current === 'Listening' && (now - lastWhistleTimeRef.current > COOLDOWN_MS)) {
             if (loudFramesRef.current > requiredFrames) {
@@ -270,278 +254,219 @@ export default function App() {
     setStatus('Ready');
   };
 
-  // UI Constants
-  const RADIUS = 120;
-  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  // --- UI Helpers ---
+  const getStatusText = () => {
+      if (status === 'Ready') return 'Ready to Start';
+      if (status === 'Listening') return 'Listening...';
+      if (status === 'Cooldown') return 'Cooling Down';
+      if (status === 'Triggered') return 'Target Reached';
+      return '';
+  };
+
+  const getStatusColor = () => {
+      if (status === 'Ready') return 'text-zinc-500';
+      if (status === 'Listening') return 'text-emerald-400';
+      if (status === 'Cooldown') return 'text-amber-400';
+      if (status === 'Triggered') return 'text-rose-500';
+      return 'text-zinc-500';
+  };
 
   return (
-    <div className="h-[100dvh] w-full bg-slate-950 text-slate-100 font-sans flex flex-col overflow-hidden touch-none select-none relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
+    <div className="h-[100dvh] w-full bg-zinc-950 text-white font-sans flex flex-col items-center justify-center overflow-hidden touch-none select-none relative selection:bg-transparent">
       
-      {/* --- Ambient Background Glows --- */}
-      <div className="absolute top-0 left-0 w-full h-1/2 bg-cyan-500/5 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-0 right-0 w-full h-1/2 bg-violet-500/5 blur-[120px] pointer-events-none"></div>
-
-      {/* --- Header --- */}
-      <header className="h-16 px-6 flex justify-between items-center shrink-0 border-b border-white/5 bg-slate-950/50 backdrop-blur-sm z-10">
-         <div className="flex items-center gap-3">
-            <div className="relative">
-                <div className="absolute inset-0 bg-cyan-500 blur-md opacity-20"></div>
-                <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-cyan-400 relative z-10 shadow-lg">
-                    <Mic size={18} />
-                </div>
-            </div>
-            <span className="font-bold text-lg tracking-wide text-white">Whistle<span className="text-cyan-400">Sync</span></span>
-         </div>
-         <button 
-            onClick={() => setShowSettings(true)}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/5 active:scale-95 text-slate-400 hover:text-cyan-400"
-         >
-            <Settings size={22} />
-         </button>
-      </header>
-
-      {/* --- Main Content --- */}
-      <main className="flex-1 flex flex-col items-center justify-center relative p-4 gap-10">
+      {/* --- Main Content Area (Centered) --- */}
+      <div className="flex flex-col items-center justify-center gap-12 w-full max-w-sm px-6 z-10">
          
-         {/* STATUS BADGE */}
-         <div className="h-12 flex items-end">
-             {status === 'Ready' && (
-                 <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-700 bg-slate-900/50 text-slate-400 text-sm font-medium tracking-wider uppercase">
-                     <Radio size={14} /> System Ready
-                 </div>
-             )}
-             {status === 'Listening' && (
-                <div className="flex items-center gap-3 px-5 py-2 rounded-full border border-cyan-500/30 bg-cyan-950/30 shadow-[0_0_15px_rgba(34,211,238,0.1)]">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-                    </span>
-                    <span className="text-cyan-300 font-bold uppercase tracking-widest text-xs">Monitoring Audio</span>
-                </div>
-             )}
-             {status === 'Cooldown' && (
-                <div className="flex items-center gap-3 px-5 py-2 rounded-full border border-amber-500/30 bg-amber-950/30">
-                    <Clock size={16} className="text-amber-500 animate-spin-slow" />
-                    <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Processing (5s)</span>
-                </div>
-             )}
-             {status === 'Triggered' && (
-                <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.5)] animate-bounce">
-                    <Activity size={20} className="text-white" />
-                    <span className="text-white font-black uppercase tracking-widest text-sm">TARGET REACHED</span>
-                </div>
-             )}
+         {/* Top: Status Text */}
+         <div className="text-center h-8 flex items-end justify-center">
+             <span className={`text-sm font-bold tracking-[0.2em] uppercase transition-colors duration-300 ${getStatusColor()}`}>
+                 {getStatusText()}
+             </span>
          </div>
 
-         {/* FUTURISTIC HUD VISUALIZER */}
-         <div className="relative w-80 h-80 flex items-center justify-center">
+         {/* Middle: The Big Number & Visualizer */}
+         <div className="relative flex items-center justify-center">
             
-            {/* Outer Static Ring */}
-            <svg className="absolute inset-0 w-full h-full rotate-[-90deg]">
-               <circle cx="50%" cy="50%" r="48%" fill="none" stroke="#1e293b" strokeWidth="6" />
-               <circle cx="50%" cy="50%" r="42%" fill="none" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-            </svg>
-
-            {/* Dynamic Volume Arc (Glow effect) */}
-            <svg className="absolute inset-0 w-full h-full rotate-[-90deg] drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-               <circle 
-                  cx="50%" cy="50%" r="48%" 
-                  fill="none" 
-                  stroke={volumeLevel > (100 - sensitivity) ? "#fff" : "#22d3ee"} 
-                  strokeWidth="6" 
-                  strokeLinecap="round"
-                  strokeDasharray={CIRCUMFERENCE}
-                  strokeDashoffset={CIRCUMFERENCE - ((volumeLevel / 100) * CIRCUMFERENCE)}
-                  className="transition-all duration-100 ease-linear"
-                  style={{ opacity: isListening ? 1 : 0 }}
-               />
-            </svg>
-
-            {/* Threshold Marker */}
+            {/* Visualizer Ring (Grows with volume) */}
             <div 
-                className="absolute inset-0 pointer-events-none transition-all duration-300"
-                style={{ transform: `rotate(${( (100-sensitivity)/100 * 360 )}deg)` }}
-            >
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1.5 w-0.5 h-8 bg-white z-20 shadow-[0_0_10px_white]" />
-            </div>
+                className={`absolute rounded-full border-2 border-current transition-all duration-75 ease-out opacity-20 ${getStatusColor()}`}
+                style={{ 
+                    width: `${Math.max(200, 200 + volumeLevel * 1.5)}px`, 
+                    height: `${Math.max(200, 200 + volumeLevel * 1.5)}px`,
+                    opacity: isListening ? 0.2 + (volumeLevel/200) : 0
+                }}
+            />
 
-            {/* Central Data Display */}
-            <div className="flex flex-col items-center z-10 relative">
-                {/* Glass Panel Background */}
-                <div className="absolute inset-[-40px] bg-slate-900/50 backdrop-blur-sm rounded-full -z-10 border border-white/5"></div>
-                
-                <span className="text-slate-500 font-mono text-[10px] uppercase tracking-[0.2em] mb-2">Cycle Count</span>
-                <div className="relative">
-                    <span className="text-[6rem] font-bold leading-none tracking-tighter tabular-nums text-white drop-shadow-2xl font-mono">
-                        {whistleCount}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 mt-4 px-3 py-1 bg-slate-800/80 rounded border border-slate-700">
-                    <span className="text-[10px] text-slate-400 font-mono uppercase">Target</span>
-                    <span className="text-sm font-bold text-cyan-400 font-mono">{targetWhistles}</span>
-                </div>
+            {/* Threshold Ring (Static Guide) */}
+            {isListening && (
+                <div 
+                    className="absolute w-[280px] h-[280px] rounded-full border border-white/5 pointer-events-none"
+                    style={{ transform: `scale(${1 + ((100-sensitivity)/100) * 0.5})` }} // Rough visual approximation
+                />
+            )}
+
+            {/* The Main Number */}
+            <div className="relative z-10 flex flex-col items-center">
+                <span className={`text-[10rem] leading-none font-bold tabular-nums tracking-tighter transition-all duration-300 ${status === 'Listening' ? 'text-white' : 'text-zinc-600'}`}>
+                    {whistleCount}
+                </span>
             </div>
          </div>
-         
-         {/* Audio Telemetry */}
-         <div className="h-8 text-center px-4 w-full max-w-xs">
-             {isListening && volumeLevel > 2 && (
-                 <div className="flex justify-between items-center text-[10px] font-mono text-cyan-500/80">
-                    <span>LVL: {Math.round(volumeLevel).toString().padStart(3, '0')}</span>
-                    <div className="flex-1 mx-2 h-1 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-cyan-500/50" style={{ width: `${volumeLevel}%` }}></div>
-                    </div>
-                    <span>THR: {100-sensitivity}</span>
-                 </div>
-             )}
-         </div>
 
-      </main>
-
-      {/* --- Footer Controls --- */}
-      <footer className="p-6 bg-slate-950/80 backdrop-blur-md border-t border-white/5 shrink-0 safe-area-bottom z-20">
-         {!isListening ? (
-             <button 
-                onClick={startListening}
-                className="group relative w-full h-16 bg-cyan-500 hover:bg-cyan-400 rounded-lg flex items-center justify-center gap-3 text-slate-950 font-bold text-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-[0.99] transition-all overflow-hidden"
-             >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                <Play fill="currentColor" size={24} /> 
-                <span className="tracking-wider">INITIALIZE</span>
-             </button>
-         ) : (
-             <div className="flex gap-4">
-                <button 
-                    onClick={stopListening}
-                    className="flex-1 h-16 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center gap-3 text-white font-bold text-lg border border-slate-700 shadow-lg active:scale-[0.99] transition-all"
-                >
-                    <Square fill="currentColor" size={20} /> TERMINATE
-                </button>
-                <button 
-                    onClick={resetApp}
-                    className="w-16 h-16 bg-slate-900 hover:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-slate-700 active:scale-[0.99] transition-all"
-                >
-                    <RefreshCw size={24} />
-                </button>
+         {/* Bottom: Target & Controls */}
+         <div className="flex flex-col items-center gap-8 w-full">
+             
+             {/* Target Display */}
+             <div className="text-center">
+                 <span className="text-zinc-500 text-sm font-medium uppercase tracking-widest">
+                     Target: <span className="text-white font-bold">{targetWhistles}</span>
+                 </span>
              </div>
-         )}
-      </footer>
 
-      {/* --- Settings Modal (Fixed Overlay) --- */}
+             {/* Controls Group */}
+             <div className="flex flex-col items-center gap-4 w-full">
+                 {!isListening ? (
+                     <button 
+                        onClick={startListening}
+                        className="group relative w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:scale-110 active:scale-95 transition-all duration-300"
+                     >
+                        <Play fill="black" className="text-black ml-1" size={32} />
+                        <span className="absolute -bottom-8 text-[10px] text-zinc-500 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Start</span>
+                     </button>
+                 ) : (
+                     <div className="flex items-center gap-8">
+                        <button 
+                            onClick={resetApp}
+                            className="w-14 h-14 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-500 hover:text-white border border-zinc-800 hover:border-zinc-600 active:scale-95 transition-all"
+                        >
+                            <RefreshCw size={20} />
+                        </button>
+                        
+                        <button 
+                            onClick={stopListening}
+                            className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center text-rose-500 hover:text-rose-400 border border-zinc-800 hover:border-rose-500/30 shadow-lg active:scale-95 transition-all"
+                        >
+                            <Square fill="currentColor" size={28} />
+                        </button>
+                        
+                        <button 
+                            onClick={() => setShowSettings(true)}
+                            className="w-14 h-14 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-500 hover:text-white border border-zinc-800 hover:border-zinc-600 active:scale-95 transition-all"
+                        >
+                            <Settings size={20} />
+                        </button>
+                     </div>
+                 )}
+                 
+                 {/* Settings Button (Only visible when NOT listening for cleaner start) */}
+                 {!isListening && (
+                     <button 
+                        onClick={() => setShowSettings(true)}
+                        className="mt-4 text-zinc-600 hover:text-zinc-400 transition-colors"
+                     >
+                        <Settings size={24} />
+                     </button>
+                 )}
+             </div>
+         </div>
+
+      </div>
+
+      {/* --- Settings Overlay (Clean & Centered) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
-            {/* Modal Header */}
-            <div className="h-16 px-6 flex justify-between items-center border-b border-white/10 shrink-0 bg-slate-950/50">
-                <div className="flex items-center gap-3">
-                    <Settings size={20} className="text-cyan-400" />
-                    <h2 className="text-lg font-bold text-white tracking-wide">SYSTEM CONFIG</h2>
-                </div>
-                <button 
-                    onClick={() => setShowSettings(false)} 
-                    className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white border border-slate-700"
-                >
-                    <X size={18} />
-                </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-zinc-900/50 border border-white/10 rounded-3xl p-8 space-y-8">
                 
-                {/* Target Section */}
-                <section>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block font-mono">Target Threshold</label>
-                    <div className="grid grid-cols-4 gap-3">
-                        {[1, 2, 3, 4, 5, 6, 8, 10].map(num => (
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-white tracking-wide">Settings</h2>
+                    <button onClick={() => setShowSettings(false)} className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 text-white">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Target */}
+                <div>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 block">Target</label>
+                    <div className="flex justify-between gap-2">
+                        {[1, 2, 3, 4, 5].map(num => (
                             <button 
                                 key={num}
                                 onClick={() => setTargetWhistles(num)}
-                                className={`h-12 rounded bg-slate-900 border font-mono font-bold text-lg transition-all ${
+                                className={`w-10 h-12 rounded-lg font-bold text-lg transition-all ${
                                     targetWhistles === num 
-                                    ? 'border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
-                                    : 'border-slate-800 text-slate-500 hover:border-slate-600'
+                                    ? 'bg-white text-black' 
+                                    : 'bg-zinc-800 text-zinc-500'
                                 }`}
                             >
                                 {num}
                             </button>
                         ))}
+                         <button 
+                                onClick={() => setTargetWhistles(Math.min(targetWhistles + 1, 20))}
+                                className="w-10 h-12 rounded-lg bg-zinc-800 text-zinc-500 font-bold"
+                            >+</button>
                     </div>
-                </section>
+                </div>
 
-                {/* Sensitivity Section */}
-                <section className="p-5 rounded-lg border border-slate-800 bg-slate-900/50">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-3">
-                            <Volume2 size={20} className="text-cyan-400" />
-                            <div>
-                                <h3 className="font-bold text-sm text-white uppercase tracking-wide">Input Gain</h3>
-                                <p className="text-[10px] text-slate-500 font-mono">SIGNAL SENSITIVITY</p>
-                            </div>
+                {/* Sliders */}
+                <div className="space-y-6">
+                    <div>
+                        <div className="flex justify-between mb-2">
+                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Sensitivity</label>
+                            <span className="text-xs text-white font-mono">{sensitivity}%</span>
                         </div>
-                        <span className="font-mono text-xl font-bold text-cyan-400">{sensitivity}%</span>
+                        <input 
+                            type="range" min="1" max="95" 
+                            value={sensitivity} 
+                            onChange={(e) => setSensitivity(Number(e.target.value))}
+                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                        />
                     </div>
-                    <input 
-                        type="range" min="1" max="95" 
-                        value={sensitivity} 
-                        onChange={(e) => setSensitivity(Number(e.target.value))}
-                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                    />
-                </section>
-
-                {/* Duration Section */}
-                <section className="p-5 rounded-lg border border-slate-800 bg-slate-900/50">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-3">
-                            <Zap size={20} className="text-violet-400" />
-                            <div>
-                                <h3 className="font-bold text-sm text-white uppercase tracking-wide">Pulse Width</h3>
-                                <p className="text-[10px] text-slate-500 font-mono">MINIMUM DURATION</p>
-                            </div>
+                    <div>
+                        <div className="flex justify-between mb-2">
+                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Duration</label>
+                            <span className="text-xs text-white font-mono">{minDuration}s</span>
                         </div>
-                        <span className="font-mono text-xl font-bold text-violet-400">{minDuration}s</span>
+                        <input 
+                            type="range" min="0.5" max="5.0" step="0.5"
+                            value={minDuration} 
+                            onChange={(e) => setMinDuration(Number(e.target.value))}
+                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                        />
                     </div>
-                    <input 
-                        type="range" min="0.5" max="5.0" step="0.5"
-                        value={minDuration} 
-                        onChange={(e) => setMinDuration(Number(e.target.value))}
-                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-400"
-                    />
-                </section>
+                </div>
 
-                {/* Webhooks Section */}
-                <section>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block font-mono">Data Uplinks</label>
+                {/* Webhooks */}
+                <div>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 block">Connections</label>
                     <div className="space-y-3">
-                        <div className="flex items-center gap-3 p-3 rounded bg-slate-900 border border-slate-800 focus-within:border-cyan-500/50 transition-colors">
-                            <Wifi size={18} className={alexaUrl ? "text-cyan-400" : "text-slate-600"} />
-                            <input 
-                                type="text" 
-                                placeholder="ALEXA_WEBHOOK_URI"
-                                value={alexaUrl} 
-                                onChange={(e) => setAlexaUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-xs font-mono text-slate-300 placeholder-slate-700 focus:outline-none"
-                            />
-                        </div>
-                         <div className="flex items-center gap-3 p-3 rounded bg-slate-900 border border-slate-800 focus-within:border-green-500/50 transition-colors">
-                            <MessageCircle size={18} className={whatsappUrl ? "text-green-400" : "text-slate-600"} />
-                            <input 
-                                type="text" 
-                                placeholder="WHATSAPP_API_ENDPOINT"
-                                value={whatsappUrl} 
-                                onChange={(e) => setWhatsappUrl(e.target.value)}
-                                className="flex-1 bg-transparent text-xs font-mono text-slate-300 placeholder-slate-700 focus:outline-none"
-                            />
-                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Alexa URL"
+                            value={alexaUrl} 
+                            onChange={(e) => setAlexaUrl(e.target.value)}
+                            className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:ring-1 focus:ring-white outline-none"
+                        />
+                        <input 
+                            type="text" 
+                            placeholder="WhatsApp URL"
+                            value={whatsappUrl} 
+                            onChange={(e) => setWhatsappUrl(e.target.value)}
+                            className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:ring-1 focus:ring-white outline-none"
+                        />
                     </div>
-                </section>
+                </div>
+
             </div>
         </div>
       )}
 
       {/* Error Toast */}
       {errorMessage && (
-        <div className="fixed top-20 left-4 right-4 bg-rose-500/10 border border-rose-500/50 text-rose-200 p-4 rounded backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-5 z-50">
-            <AlertTriangle size={20} />
-            <span className="font-mono text-xs">{errorMessage}</span>
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-800 text-rose-400 px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50">
+            <AlertTriangle size={18} />
+            <span className="text-xs font-medium">{errorMessage}</span>
         </div>
       )}
 
