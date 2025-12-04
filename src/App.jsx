@@ -372,93 +372,114 @@ export default function App() {
 
       </div>
 
-      {/* --- Settings Overlay (Solid White, High Contrast) --- */}
+      {/* --- Settings Overlay (Full Black, Red Typography) --- */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 bg-white flex items-start justify-center pt-20 px-4 animate-in fade-in duration-200 text-zinc-900">
-            <div className="w-full max-w-sm bg-white border border-zinc-200 rounded-2xl p-6 space-y-6 shadow-xl">
-                
-                {/* Header */}
-                <div className="flex justify-between items-center pb-4 border-b border-zinc-200">
-                    <h2 className="text-base font-semibold tracking-wide">Settings</h2>
-                    <button onClick={() => setShowSettings(false)} className="p-1.5 bg-zinc-100 rounded-full hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors">
-                        <X size={16} />
-                    </button>
-                </div>
-
-                {/* Target */}
-                <div className="space-y-3">
-                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Target Whistles</label>
-                    <div className="flex justify-between gap-2">
-                        {[1, 2, 3, 4, 5].map(num => (
-                            <button 
-                                key={num}
-                                onClick={() => setTargetWhistles(num)}
-                                className={`flex-1 h-10 rounded-md font-semibold text-sm transition-all border ${
-                                    targetWhistles === num 
-                                    ? 'bg-emerald-100 border-emerald-500 text-emerald-700' 
-                                    : 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-50'
-                                }`}
-                            >
-                                {num}
-                            </button>
-                        ))}
-                         <button 
-                                onClick={() => setTargetWhistles(Math.min(targetWhistles + 1, 20))}
-                                className="flex-1 h-10 rounded-md bg-white text-zinc-700 font-semibold text-sm border border-zinc-300 hover:bg-zinc-50"
-                            >+</button>
-                    </div>
-                </div>
-
-                {/* Sliders */}
-                <div className="space-y-5">
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Sensitivity</label>
-                            <span className="text-xs text-zinc-700 font-mono">{sensitivity}%</span>
-                        </div>
-                        <input 
-                            type="range" min="1" max="95" 
-                            value={sensitivity} 
-                            onChange={(e) => setSensitivity(Number(e.target.value))}
-                            className="w-full h-1.5 bg-zinc-200 rounded-full appearance-none cursor-pointer accent-emerald-500"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Min Duration</label>
-                            <span className="text-xs text-zinc-700 font-mono">{minDuration}s</span>
-                        </div>
-                        <input 
-                            type="range" min="0.5" max="5.0" step="0.5"
-                            value={minDuration} 
-                            onChange={(e) => setMinDuration(Number(e.target.value))}
-                            className="w-full h-1.5 bg-zinc-200 rounded-full appearance-none cursor-pointer accent-emerald-500"
-                        />
-                    </div>
-                </div>
-
-                {/* Webhooks */}
-                <div className="space-y-3">
-                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Connections</label>
-                    <div className="space-y-2">
-                        <input 
-                            type="text" 
-                            placeholder="Alexa Webhook URL"
-                            value={alexaUrl} 
-                            onChange={(e) => setAlexaUrl(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-xs text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-0 outline-none transition-colors"
-                        />
-                        <input 
-                            type="text" 
-                            placeholder="WhatsApp API URL"
-                            value={whatsappUrl} 
-                            onChange={(e) => setWhatsappUrl(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-xs text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-0 outline-none transition-colors"
-                        />
-                    </div>
-                </div>
-
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center px-4">
+          <div className="w-full max-w-sm bg-black border border-red-900/60 rounded-2xl p-6 space-y-6 shadow-[0_0_60px_rgba(248,113,113,0.25)]">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-red-900/60">
+              <h2 className="text-base font-semibold text-red-100 tracking-[0.25em] uppercase">
+                Settings
+              </h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="p-1.5 rounded-full border border-red-900/70 bg-red-900/20 hover:bg-red-900/60 text-red-300 hover:text-red-50 transition-colors"
+              >
+                <X size={16} />
+              </button>
             </div>
+
+            {/* Target */}
+            <div className="space-y-3">
+              <label className="text-[0.7rem] font-semibold text-red-400 uppercase tracking-[0.25em]">
+                Target Whistles
+              </label>
+              <div className="flex justify-between gap-2">
+                {[1, 2, 3, 4, 5].map(num => (
+                  <button 
+                    key={num}
+                    onClick={() => setTargetWhistles(num)}
+                    className={`flex-1 h-10 rounded-md font-semibold text-sm transition-all border ${
+                      targetWhistles === num 
+                      ? 'bg-red-600/20 border-red-400 text-red-100 shadow-[0_0_20px_rgba(248,113,113,0.35)]' 
+                      : 'bg-zinc-950 border-red-900/60 text-red-400 hover:border-red-500 hover:bg-red-900/20'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setTargetWhistles(Math.min(targetWhistles + 1, 20))}
+                  className="flex-1 h-10 rounded-md bg-zinc-950 border border-red-900/60 text-red-400 font-semibold text-sm hover:bg-red-900/20 hover:border-red-500 transition-all"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Sliders */}
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[0.7rem] font-semibold text-red-400 uppercase tracking-[0.25em]">
+                    Sensitivity
+                  </label>
+                  <span className="text-xs text-red-200 font-mono">{sensitivity}%</span>
+                </div>
+                <input 
+                  type="range"
+                  min="1"
+                  max="95"
+                  value={sensitivity}
+                  onChange={(e) => setSensitivity(Number(e.target.value))}
+                  className="w-full h-1.5 bg-zinc-900 rounded-full appearance-none cursor-pointer accent-red-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[0.7rem] font-semibold text-red-400 uppercase tracking-[0.25em]">
+                    Min Duration
+                  </label>
+                  <span className="text-xs text-red-200 font-mono">{minDuration}s</span>
+                </div>
+                <input 
+                  type="range"
+                  min="0.5"
+                  max="5.0"
+                  step="0.5"
+                  value={minDuration}
+                  onChange={(e) => setMinDuration(Number(e.target.value))}
+                  className="w-full h-1.5 bg-zinc-900 rounded-full appearance-none cursor-pointer accent-red-500"
+                />
+              </div>
+            </div>
+
+            {/* Webhooks */}
+            <div className="space-y-3">
+              <label className="text-[0.7rem] font-semibold text-red-400 uppercase tracking-[0.25em]">
+                Connections
+              </label>
+              <div className="space-y-2">
+                <input 
+                  type="text" 
+                  placeholder="Alexa Webhook URL"
+                  value={alexaUrl} 
+                  onChange={(e) => setAlexaUrl(e.target.value)}
+                  className="w-full bg-black border border-red-900/70 rounded-lg px-3 py-2.5 text-xs text-red-100 placeholder-red-700 focus:border-red-500 focus:ring-0 outline-none transition-colors"
+                />
+                <input 
+                  type="text" 
+                  placeholder="WhatsApp API URL"
+                  value={whatsappUrl} 
+                  onChange={(e) => setWhatsappUrl(e.target.value)}
+                  className="w-full bg-black border border-red-900/70 rounded-lg px-3 py-2.5 text-xs text-red-100 placeholder-red-700 focus:border-red-500 focus:ring-0 outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
 
